@@ -22,6 +22,8 @@ Flow from the user perspective:
 3. Debug data is processed and combined with code context. Combined context is sent to LLM for code completion
 4. Generated code is returned and presented to the user. User can accept, modify, or request refinements
 
+![Logic diagram](images/diagram.png "Logic diagram")
+
 ## Experimentation Framework
 
 ### Debugging Information Subsets
@@ -67,18 +69,13 @@ The VSCode extension will provide:
 
 ### Assumptions and Benchmark Dataset
 
-To test our system we will need a set of well-covered projects. We will create a dataset from 10 open-source projects. For each project, a set of functions with comprehensive test coverage will be identified and removed. The system will attempt to regenerate these functions using only their signatures, associated tests, and various debugging information.
+We focus on supporting Python. To test our system we will need a set of well-covered Python projects. We will create a dataset from 5-10 open-source projects. For each project, a set of functions with comprehensive test coverage will be identified and removed. The system will attempt to regenerate these functions using only their signatures, associated tests, and various debugging information. Projects we consider:
 
-1. [Project 1]
-2. [Project 2]
-3. [Project 3]
-4. [Project 4]
-5. [Project 5]
-6. [Project 6]
-7. [Project 7]
-8. [Project 8]
-9. [Project 9]
-10. [Project 10]
+1. [PyTest](https://github.com/pytest-dev/pytest) 
+2. [Pandas](https://github.com/pandas-dev/pandas)
+3. [Flask](https://github.com/pallets/flask)
+4. [Django](https://github.com/django/django)
+5. [Slipcover](https://github.com/plasma-umass/slipcover)
 
 ### Evaluation Metrics
 
