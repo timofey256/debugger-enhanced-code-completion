@@ -24,6 +24,14 @@ Flow from the user perspective:
 
 ![Logic diagram](images/diagram.png "Logic diagram")
 
+### Similar tools
+
+Various tools leverage debugging information in different ways. Some allow the language model to control the debugger, others run the debugger independently and feed the resulting context to the model. We draw inspiration from these approaches.
+
+- [Claude Debugs for You](https://github.com/jasonjmcghee/claude-debugs-for-you/)
+- [LDB](https://github.com/FloridSleeves/LLMDebugger)
+- [ChatDBG](https://github.com/plasma-umass/ChatDBG)
+
 ## Experimentation Framework
 
 ### Debugging Information Subsets
@@ -46,6 +54,10 @@ The system will experiment with various combinations of debugging information:
   - Runtime values of function parameters
   - Exception information (if applicable)
 
+### Debugger Integration
+
+We will use the Python Debugger ([PDB](https://docs.python.org/3/library/pdb.html)) through a custom wrapper that captures variable values at various execution points, call stack information when tests are executed, execution paths through the target function, and runtime type information of inputs and outputs
+
 ### Interaction Modes
 
 We plan to evaluate 2 ways to feed debugging information into the LLM:
@@ -53,6 +65,10 @@ We plan to evaluate 2 ways to feed debugging information into the LLM:
  - **Batch Mode**. Collects all debugging information upfront and generates complete function in a single LLM call.
 
  - **Interactive Mode**. Model has full control over the debugging process. It can collect all the necessary data by stepping through the functions. 
+
+### Base models
+
+We will evaluate our system on several LLM base models: Claude 3.5/3.7, GPT family (4o, o1, possibly others) and DeepSeek R1.
 
 ## User Interface Specification
 
