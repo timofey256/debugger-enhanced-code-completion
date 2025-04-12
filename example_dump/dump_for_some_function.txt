@@ -1,0 +1,147 @@
+Debugging test: test_single_category_single_item
+Entering function test_single_category_single_item at line 3 in file <string>
+Source code at this line: 
+Local before this line: {}
+Local after this line: {}
+
+
+Processing line in function test_single_category_single_item at line 5 in file <string>
+Source code at this line: 
+Local before this line: {}
+Local after this line: {}
+
+
+Processing line in function test_single_category_single_item at line 4 in file <string>
+Source code at this line: 
+Local before this line: {}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}]}
+
+
+Processing line in function test_single_category_single_item at line 7 in file <string>
+Source code at this line: 
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}]}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}]}
+
+
+Entering function calculate_tax_summary at line 10 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: def calculate_tax_summary(purchases: List[Dict]) -> Dict[str, Dict]:
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}]}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}]}
+
+
+Processing line in function calculate_tax_summary at line 15 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: summary = defaultdict(lambda: {'total': 0.0, 'tax': 0.0})
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}]}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}}
+
+
+Processing line in function calculate_tax_summary at line 17 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: for item in purchases:
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}}
+
+
+Processing line in function calculate_tax_summary at line 18 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: category = item['category']
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'"}
+
+
+Processing line in function calculate_tax_summary at line 19 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: price = item['price']
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'"}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0'}
+
+
+Processing line in function calculate_tax_summary at line 20 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: tax_rate = item['tax_rate']
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0'}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1'}
+
+
+Processing line in function calculate_tax_summary at line 22 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: tax_amount = price * tax_rate
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1'}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0'}
+
+
+Processing line in function calculate_tax_summary at line 23 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: total_cost = price + tax_amount
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0'}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+
+
+Processing line in function calculate_tax_summary at line 25 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: summary[category]['total'] += total_cost
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+Local after this line: {}
+
+
+Entering function <lambda> at line 15 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: summary = defaultdict(lambda: {'total': 0.0, 'tax': 0.0})
+Local before this line: {}
+Local after this line: {}
+
+
+Processing line in function <lambda> at line 15 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: summary = defaultdict(lambda: {'total': 0.0, 'tax': 0.0})
+Local before this line: {}
+Local after this line: {}
+
+
+Returning from <lambda> at line 15 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Returning value of this line is: {'total': 0.0, 'tax': 0.0}
+Source code at this line: summary = defaultdict(lambda: {'total': 0.0, 'tax': 0.0})
+Local before this line: {}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {"'Education'": {"'total'": '110.0', "'tax'": '0.0'}}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+
+
+Processing line in function calculate_tax_summary at line 26 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: summary[category]['tax'] += tax_amount
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {"'Education'": {"'total'": '110.0', "'tax'": '0.0'}}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+
+
+Processing line in function calculate_tax_summary at line 17 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: for item in purchases:
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+
+
+Processing line in function calculate_tax_summary at line 28 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Source code at this line: return dict(summary)
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+
+
+Returning from calculate_tax_summary at line 28 in file /home/tymofii/school/isp/debugger-enhanced-code-completion/functions.py
+Returning value of this line is: {'Education': {'total': 110.0, 'tax': 10.0}}
+Source code at this line: return dict(summary)
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'summary': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}, 'item': {"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}, 'category': "'Education'", 'price': '100.0', 'tax_rate': '0.1', 'tax_amount': '10.0', 'total_cost': '110.0'}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'result': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}}
+
+
+Processing line in function test_single_category_single_item at line 8 in file <string>
+Source code at this line: 
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'result': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'result': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}}
+
+
+Processing line in function test_single_category_single_item at line 9 in file <string>
+Source code at this line: 
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'result': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'result': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}}
+
+
+Processing line in function test_single_category_single_item at line 8 in file <string>
+Source code at this line: 
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'result': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}}
+Local after this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'result': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}}
+
+
+Returning from test_single_category_single_item at line 8 in file <string>
+Returning value of this line is: None
+Source code at this line: 
+Local before this line: {'purchases': [{"'name'": "'Book'", "'category'": "'Education'", "'price'": '100.0', "'tax_rate'": '0.1'}], 'result': {"'Education'": {"'total'": '110.0', "'tax'": '10.0'}}}
+
+
