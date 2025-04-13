@@ -7,7 +7,7 @@ import traceback
 import collections
 import builtins
 
-# used to expand memory-objects
+# Used to expand memory-objects
 def safe_serialize(obj, _visited_ids=None, _depth=0, _max_depth=3):
     if _visited_ids is None:
         _visited_ids = set()
@@ -127,24 +127,28 @@ def process_trace_log(trace_log):
 
     return processed
 
-def debug_line_by_line_in_test_file(test_file_path):
+def debug_line_by_line_in_test_file(test_file_path, test_method=None):
     with open(test_file_path, 'r') as f:
         lines = f.readlines()
 
     test_module = {}
     exec("".join(lines), test_module)
 
-    test_methods = [func for func in test_module if func.startswith('test_')]
+    if test_method is not None:
+        test_prefix = test_method
+    else:
+        test_prefix = "test_"
+
+    test_methods = [func for func in test_module if func.startswith(test_prefix)]
 
     for test_method in test_methods:
         print(f"Debugging test: {test_method}")
         test_case = test_module[test_method]
         trace_log = debug_test_case(test_case)
-        break
 
     result = process_trace_log(trace_log)
     for b in result:
         print(b)
         print()
 
-debug_line_by_line_in_test_file('test_tax_func.py')
+debug_line_by_line_in_test_file('test_tax_func.py', 'test_multiple_categories')
