@@ -151,4 +151,10 @@ def debug_line_by_line_in_test_file(test_file_path, test_method=None):
         print(b)
         print()
 
-debug_line_by_line_in_test_file('test_tax_func.py', 'test_multiple_categories')
+if __name__ == "__main__":
+    tests_functions_path = sys.argv[1]
+    test_function_name = None
+    if len(sys.argv) > 2:
+        test_function_name = sys.argv[2]
+
+    debug_line_by_line_in_test_file(tests_functions_path, test_function_name)
