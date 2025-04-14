@@ -3,6 +3,8 @@ import sys
 import json
 import traceback
 from typing import Dict, List, Optional, Any
+import json
+import time
 
 from llm_interface import LLMInterface
 
@@ -146,7 +148,8 @@ class CompletionModelBuilder:
                 "traceback": exception_data["traceback"],
                 "relevant_variables": self._filter_relevant_variables(exception_data["local_variables"]),
                 "execution_context": self._summarize_execution_context(exception_data["context_frames"]),
-                "related_code": self._extract_related_code(exception_data["traceback"])
+                "related_code": self._extract_related_code(exception_data["traceback"]),
+                "class_context": exception_data["exception_details"].get("class_context", {})
             }
             
             completion_context["exceptions"].append(exception_info)
@@ -270,6 +273,11 @@ Message: {exception['exception_message']}
 {json.dumps(exception['relevant_variables'], indent=2)}
 ```
 
+## CLASS API CONTEXT - EXCEPTION {i+1}
+```
+{json.dumps(exception.get('class_context', {}), indent=2)}
+```
+
 """
         
         prompt += f"""
@@ -297,6 +305,24 @@ Based on the information above, please:
             sections.append(f"## File: {file_path}\n```python\n{code}\n```")
             
         return "\n\n".join(sections)
+
+def log_prompt(request, prompt_logged_dir="prompt_log"):
+    timestamp = int(time.time())
+
+    os.makedirs(prompt_logged_dir, exist_ok=True)
+    prompt_logged_path = f"{prompt_logged_dir}/prompt_{timestamp}.txt"
+    
+    with open(prompt_logged_path, 'w') as f:
+        f.write(request)
+
+def log_code_completion(request, code_completion_dir="code_completion_results"):
+    timestamp = int(time.time())
+
+    os.makedirs(code_completion_dir, exist_ok=True)
+    prompt_logged_path = f"{code_completion_dir}/code_{timestamp}.py"
+    
+    with open(prompt_logged_path, 'w') as f:
+        f.write(request)
 
 def main():
     """
@@ -327,13 +353,10 @@ def main():
     
     code = llm.extract_code_from_response(response)
     
-    output_path = "result_completion.py"
-    with open(output_path, 'w') as f:
-        f.write(code)
-    
-    print(f"Completed code saved to {output_path}")
-    
-    print(request)
+    log_prompt(request)
+    log_code_completion(code)
+
+    print("Done.")
 
 if __name__ == "__main__":
     main()
