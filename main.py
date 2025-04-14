@@ -7,7 +7,21 @@ import traceback
 import collections
 import builtins
 
-# Used to expand memory-objects
+def get_class_interface(cls):
+    interface = {}
+    for name, member in inspect.getmembers(cls, predicate=inspect.isfunction):
+        if not name.startswith('_'):
+            try:
+                sig = str(inspect.signature(member))
+            except ValueError:
+                sig = '(...)'
+            doc = inspect.getdoc(member) or ''
+            interface[name] = {
+                'signature': sig,
+                'doc': doc
+            }
+    return interface
+
 def safe_serialize(obj, _visited_ids=None, _depth=0, _max_depth=3):
     try:
         if _visited_ids is None:
@@ -60,9 +74,6 @@ def debug_test_case(test_case):
         file_name = code.co_filename
         line_no = frame.f_lineno
 
-        # Skip frames outside project directory
-        if not os.path.abspath(file_name).startswith(PROJECT_ROOT) or "site-packages" in file_name or "frozen" in file_name:
-            return
 
         # Extract source line
         try:
@@ -77,7 +88,7 @@ def debug_test_case(test_case):
             for k, v in frame.f_locals.items()
         }
 
-        trace_log.append({
+        record = {
             'event': event,
             'func_name': func_name,
             'file_name': file_name,
@@ -85,9 +96,28 @@ def debug_test_case(test_case):
             'source': source_line,
             'locals': local_vars,
             'arg': safe_repr(arg) if event == 'return' else None
-        })
+        }
 
+        if not file_name.startswith("/home/tymofii/school/isp/") or "site-packages" in file_name:
+            return
+
+        # Add class context only for exception events
+        if event == 'exception':
+            instance = frame.f_locals.get('self')
+            if instance:
+                cls = getattr(instance, '__class__', None)
+                if cls:
+                    methods = inspect.getmembers(cls, predicate=inspect.isfunction)
+                    public_methods = {
+                        name: inspect.getdoc(method) or ""
+                        for name, method in methods
+                        if not name.startswith('_')
+                    }
+                    record['class_context'] = public_methods
+
+        trace_log.append(record)
         return trace_function
+
 
     def safe_repr(obj):
         try:
@@ -119,24 +149,31 @@ def process_trace_log(trace_log):
     for i, record in enumerate(trace_log):
         block = ""
         if record["event"] == "call":
-            block += f"Entering function {record["func_name"]} at line {record["line_no"]} in file {record["file_name"]}\n"
+            if record.get("class_name"):
+                block += f"Entering method {record['class_name']}.{record['func_name']} at line {record['line_no']} in file {record['file_name']}\n"
+            else:
+                block += f"Entering function {record['func_name']} at line {record['line_no']} in file {record['file_name']}\n"
         elif record["event"] == "line":
-            block += f"Processing line in function {record["func_name"]} at line {record["line_no"]} in file {record["file_name"]}\n"
+            block += f"Processing line in function {record['func_name']} at line {record['line_no']} in file {record['file_name']}\n"
         elif record["event"] == "return":
-            block += f"Returning from {record["func_name"]} at line {record["line_no"]} in file {record["file_name"]}\n"
-            block += f"Returning value of this line is: {record["arg"]}\n"
+            block += f"Returning from {record['func_name']} at line {record['line_no']} in file {record['file_name']}\n"
+            block += f"Returning value of this line is: {record['arg']}\n"
         elif record["event"] == "exception":
-            block += f"Exception: {record}\n"
+            block += f"Exception\n"
         else:
             print(record["event"])
-            raise f"Unknown event: {record["event"]}" 
+            raise Exception(f"Unknown event: {record['event']}")
 
-        if "source" in record.keys():
-            block += f"Source code at this line: {record["source"]}\n"
-        if "locals" in record.keys():
-            block += f"Local before this line: {record["locals"]}\n"
-        if i != len(trace_log)-1 and "locals" in trace_log[i+1].keys():
-            block += f"Local after this line: {trace_log[i+1]["locals"]}\n"
+        if i != len(trace_log) - 1 and "locals" in trace_log[i + 1]:
+            block += f"Local after this line: {trace_log[i + 1]['locals']}\n"
+
+        # Include class interface if available
+        if record.get("class_interface"):
+            block += f"Class interface for {record['class_name']}:\n"
+            for method, details in record["class_interface"].items():
+                block += f"  {method}{details['signature']}\n"
+                if details['doc']:
+                    block += f"    Docstring: {details['doc']}\n"
 
         processed.append(block)
 
@@ -178,11 +215,46 @@ def debug_line_by_line_in_test_file(test_file_path, test_method=None, save_json=
         else:
             json_filename = f"{output_dir}/trace_{os.path.basename(test_file_path)}_{timestamp}.json"
         
+        # Custom JSON encoder to handle sets and other non-serializable types
+        class CustomJSONEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, set):
+                    return list(obj)
+                try:
+                    return str(obj)
+                except:
+                    return "<unserializable>"
+        
+        # Convert trace_log to serializable format
+        def prepare_for_json(data):
+            if isinstance(data, dict):
+                return {k: prepare_for_json(v) for k, v in data.items()}
+            elif isinstance(data, list):
+                return [prepare_for_json(item) for item in data]
+            elif isinstance(data, tuple):
+                return [prepare_for_json(item) for item in data]
+            elif isinstance(data, set):
+                return [prepare_for_json(item) for item in data]
+            else:
+                try:
+                    # Test if object is JSON serializable
+                    json.dumps(data)
+                    return data
+                except (TypeError, OverflowError):
+                    # If not serializable, convert to string
+                    try:
+                        return str(data)
+                    except:
+                        return "<unserializable>"
+        
+        # Prepare the data
+        json_safe_trace_log = prepare_for_json(trace_log)
+        
         with open(json_filename, 'w') as f:
             try:
-                json.dump(trace_log, f, indent=2)
+                json.dump(json_safe_trace_log, f, indent=2, cls=CustomJSONEncoder)
             except Exception as e:
-                print(f"WARNING: failed to save the element: {e}. Element: {trace_log}")
+                print(f"WARNING: failed to save the element: {e}. ")
         
         print(f"Trace log saved to {json_filename}")
 
