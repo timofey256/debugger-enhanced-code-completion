@@ -7,8 +7,6 @@ import traceback
 import collections
 import builtins
 
-from needed.dummy_pytester import DummyPytester 
-
 # Used to expand memory-objects
 def safe_serialize(obj, _visited_ids=None, _depth=0, _max_depth=3):
     try:
@@ -128,18 +126,23 @@ def process_trace_log(trace_log):
             block += f"Returning from {record["func_name"]} at line {record["line_no"]} in file {record["file_name"]}\n"
             block += f"Returning value of this line is: {record["arg"]}\n"
         elif record["event"] == "exception":
-            block += f"Exception\n"
+            block += f"Exception: {record}\n"
         else:
             print(record["event"])
             raise f"Unknown event: {record["event"]}" 
 
+        if "source" in record.keys():
+            block += f"Source code at this line: {record["source"]}\n"
+        if "locals" in record.keys():
+            block += f"Local before this line: {record["locals"]}\n"
         if i != len(trace_log)-1 and "locals" in trace_log[i+1].keys():
             block += f"Local after this line: {trace_log[i+1]["locals"]}\n"
+
         processed.append(block)
 
     return processed
 
-def debug_line_by_line_in_test_file(test_file_path, test_method=None):
+def debug_line_by_line_in_test_file(test_file_path, test_method=None, save_json=True):
     with open(test_file_path, 'r') as f:
         lines = f.readlines()
 
@@ -159,10 +162,36 @@ def debug_line_by_line_in_test_file(test_file_path, test_method=None):
         test_case = test_module[test_method]
         trace_log = debug_test_case(test_case)
 
+    # Save trace log to JSON file for later processing
+    if save_json:
+        import json
+        import os
+        import time
+        
+        timestamp = int(time.time())
+        output_dir = "experiment_runs"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Create filename based on test method
+        if test_method is not None:
+            json_filename = f"{output_dir}/trace_{os.path.basename(test_file_path)}_{test_method}_{timestamp}.json"
+        else:
+            json_filename = f"{output_dir}/trace_{os.path.basename(test_file_path)}_{timestamp}.json"
+        
+        with open(json_filename, 'w') as f:
+            try:
+                json.dump(trace_log, f, indent=2)
+            except Exception as e:
+                print(f"WARNING: failed to save the element: {e}. Element: {trace_log}")
+        
+        print(f"Trace log saved to {json_filename}")
+
     result = process_trace_log(trace_log)
     for b in result:
         print(b)
         print()
+    
+    return trace_log, json_filename if save_json else None
 
 if __name__ == "__main__":
     tests_functions_path = sys.argv[1]
