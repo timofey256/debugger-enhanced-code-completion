@@ -1,11 +1,8 @@
 import unittest
 import sys
-
 import inspect
 import traceback
-
 import collections
-import builtins
 
 def get_class_interface(cls):
     interface = {}
@@ -74,7 +71,6 @@ def debug_test_case(test_case):
         file_name = code.co_filename
         line_no = frame.f_lineno
 
-
         # Extract source line
         try:
             source_line = inspect.getsourcefile(code)
@@ -101,24 +97,37 @@ def debug_test_case(test_case):
         if not file_name.startswith("/home/tymofii/school/isp/") or "site-packages" in file_name:
             return
 
-        # Add class context only for exception events
         if event == 'exception':
             instance = frame.f_locals.get('self')
             if instance:
                 cls = getattr(instance, '__class__', None)
                 if cls:
+                    class_doc = inspect.getdoc(cls) or ""
                     methods = inspect.getmembers(cls, predicate=inspect.isfunction)
-                    public_methods = {
-                        name: inspect.getdoc(method) or ""
-                        for name, method in methods
-                        if not name.startswith('_')
+                    class_context = {}
+
+                    for name, method in methods:
+                        if not name.startswith('_') or name == '__init__':
+                            try:
+                                source_lines, _ = inspect.getsourcelines(method)
+                                method_source = ''.join(source_lines).strip()
+                            except Exception:
+                                method_source = "<source unavailable>"
+                            method_doc = inspect.getdoc(method) or ""
+                            class_context[name] = {
+                                'doc': method_doc,
+                                'source': method_source
+                            }
+
+                    record['class_context'] = {
+                        'class_doc': class_doc,
+                        'methods': class_context
                     }
-                    record['class_context'] = public_methods
 
         trace_log.append(record)
         return trace_function
 
-
+    
     def safe_repr(obj):
         try:
             return repr(obj)
