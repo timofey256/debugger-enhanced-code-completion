@@ -3,6 +3,7 @@ import sys
 import os
 import requests
 from typing import Dict, Any, Optional, List
+import time
 
 class LLMInterface:
     """
@@ -122,25 +123,23 @@ def main():
         print(f"Error reading prompt file: {str(e)}")
         sys.exit(1)
     
-    # For demo purposes, print what would be sent to the LLM
-    print("Would send the following prompt to LLM:")
+    print("Sending prompt to LLM:")
     print("----------------------------------------")
     print(prompt[:500] + "..." if len(prompt) > 500 else prompt)
     print("----------------------------------------")
     
-    # Comment out the actual LLM request to avoid accidental API usage
-    """
     llm = LLMInterface()
     response = llm.complete_code(prompt)
     
     code = llm.extract_code_from_response(response)
     
-    output_path = os.path.splitext(prompt_path)[0] + "_completion.py"
+    output_path = os.path.join("code_completion_results", f"code_{int(time.time())}.py")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
     with open(output_path, 'w') as f:
         f.write(code)
     
     print(f"Completed code saved to {output_path}")
-    """
 
 if __name__ == "__main__":
     main()

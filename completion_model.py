@@ -1,8 +1,7 @@
 import os
 import sys
 import json
-import traceback
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 import json
 import time
 
@@ -49,14 +48,14 @@ class CompletionModelBuilder:
         start_idx = max(0, exception_index - context_lines)
         return self.trace_log[start_idx:exception_index]
     
-    def _extract_source_from_file(self, file_name: str, line_no: int, context_lines: int = 15) -> str:
+    def _extract_source_from_file(self, file_name: str, line_no: int, context_lines: int = None) -> str:
         """
-        Extract source code from a file with context lines.
+        Extract source code from a file.
         
         Args:
             file_name: Path to the source file
-            line_no: Line number where code is needed
-            context_lines: Number of lines before and after to include
+            line_no: Line number where code is needed (for highlighting)
+            context_lines: Number of lines before and after to include (None for entire file)
             
         Returns:
             Source code with context
@@ -68,16 +67,25 @@ class CompletionModelBuilder:
             with open(file_name, 'r') as f:
                 lines = f.readlines()
                 
-            start = max(0, line_no - context_lines - 1)
-            end = min(len(lines), line_no + context_lines)
-            
-            # Format with line numbers
-            result = []
-            for i, line in enumerate(lines[start:end], start + 1):
-                prefix = "→ " if i == line_no else "  "
-                result.append(f"{prefix}{i}: {line}")
+            if context_lines is None:
+                # Return entire file
+                result = []
+                for i, line in enumerate(lines, 1):
+                    prefix = "→ " if i == line_no else "  "
+                    result.append(f"{prefix}{i}: {line}")
+                return "".join(result)
+            else:
+                # Return context window
+                start = max(0, line_no - context_lines - 1)
+                end = min(len(lines), line_no + context_lines)
                 
-            return "".join(result)
+                # Format with line numbers
+                result = []
+                for i, line in enumerate(lines[start:end], start + 1):
+                    prefix = "→ " if i == line_no else "  "
+                    result.append(f"{prefix}{i}: {line}")
+                    
+                return "".join(result)
         except Exception as e:
             return f"# Error reading file: {str(e)}"
     
@@ -95,7 +103,8 @@ class CompletionModelBuilder:
             if "file_name" in exception and "line_no" in exception:
                 source_code = self._extract_source_from_file(
                     exception["file_name"], 
-                    exception["line_no"]
+                    exception["line_no"],
+                    context_lines=None  # Get entire file
                 )
             else:
                 source_code = "# Source code not available"
@@ -217,8 +226,9 @@ class CompletionModelBuilder:
                     file_path = parts[0]
                     line_no = int(parts[1].split(',')[0])
                     
-                    if os.path.exists(file_path) and file_path not in files_mentioned:
-                        files_mentioned[file_path] = self._extract_source_from_file(file_path, line_no)
+                    # Only include files from the calculator repository
+                    if os.path.exists(file_path) and 'calculator' in file_path and file_path not in files_mentioned:
+                        files_mentioned[file_path] = self._extract_source_from_file(file_path, line_no, context_lines=None)
         
         return files_mentioned
     
@@ -239,7 +249,7 @@ class CompletionModelBuilder:
         
         # Format the request as a clear prompt for the LLM
         prompt = f"""
-You are an AI coding assistant tasked with fixing broken code based on debug information.
+You are an AI coding assistant tasked with implementing missing code based on debug information.
 
 # OVERVIEW
 Total Exceptions Found: {context['num_exceptions']}
@@ -285,9 +295,10 @@ Message: {exception['exception_message']}
 {self._format_related_code(context['all_related_code'])}
 
 Based on the information above, please:
-1. Identify the root causes of all exceptions
-2. Provide a fixed implementation of the functions that would pass the tests
-3. Explain your reasoning for the fixes
+1. Identify all functions that need to be implemented (including those with NotImplementedError)
+2. Provide a complete implementation of ALL functions that would pass the tests
+3. Make sure to implement ALL functions, not just the ones that had exceptions
+4. Explain your reasoning for the implementations
 
 ```python
 # Your implementation here

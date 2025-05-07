@@ -1,0 +1,47 @@
+{
+  "timestamp": "2025-05-07T09:40:37.722923",
+  "models": [
+    "deepseek-coder"
+  ],
+  "test_files": 1,
+  "summary": {
+    "deepseek-coder": {
+      "total_tests": 14,
+      "total_passed_before": 0,
+      "total_passed_after": 5,
+      "average_edit_distance": 120.85714285714286,
+      "average_normalized_distance": 1.4385751823435058,
+      "average_execution_time": 38.488421,
+      "test_improvement_rate": 1.0
+    }
+  },
+  "detailed_results": {
+    "example/calculator/tests/test_arithmetic.py": {
+      "deepseek-coder": {
+        "passed_tests_before": 0,
+        "passed_tests_after": 5,
+        "total_tests": 14,
+        "edit_distances": {
+          "add": 78,
+          "subtract": 78,
+          "multiply": 82,
+          "divide": 157,
+          "power": 84,
+          "sum_list": 153,
+          "average": 214
+        },
+        "normalized_distances": {
+          "add": 0.975,
+          "subtract": 0.9176470588235294,
+          "multiply": 0.9647058823529412,
+          "divide": 1.891566265060241,
+          "power": 1.024390243902439,
+          "sum_list": 1.7790697674418605,
+          "average": 2.5176470588235293
+        },
+        "execution_time": 38.488421,
+        "error_messages": []
+      }
+    }
+  }
+}
