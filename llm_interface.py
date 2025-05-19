@@ -11,7 +11,7 @@ class LLMInterface:
     This class handles communication with the LLM API and processes responses.
     """
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "deepseek-coder"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "deepseek-chat"):
         """
         Initialize the LLM interface.
         
@@ -56,7 +56,7 @@ class LLMInterface:
             )
             
             response.raise_for_status()
-            return response.json()
+            return response.json()["choices"][0]["message"]["content"]
         except Exception as e:
             print(f"Error sending request to LLM: {str(e)}")
             return {"error": str(e)}
@@ -103,6 +103,11 @@ class LLMInterface:
         except Exception as e:
             return f"# Error extracting code: {str(e)}"
 
+def run_completion(prompt):
+    llm = LLMInterface()
+    response = llm.complete_code(prompt)
+    return response
+
 def main():
     """
     Send a debug-based code completion request to an LLM and display the response.
@@ -119,27 +124,18 @@ def main():
     try:
         with open(prompt_path, 'r') as f:
             prompt = f.read()
+            response = run_completion(prompt)
+
+            output_path = os.path.join("code_completion_results", f"response_{int(time.time())}.txt")
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            with open(output_path, 'w') as f:
+                f.write(response)
+    
+            print(f"Completed code saved to {output_path}")
     except Exception as e:
         print(f"Error reading prompt file: {str(e)}")
         sys.exit(1)
-    
-    print("Sending prompt to LLM:")
-    print("----------------------------------------")
-    print(prompt[:500] + "..." if len(prompt) > 500 else prompt)
-    print("----------------------------------------")
-    
-    llm = LLMInterface()
-    response = llm.complete_code(prompt)
-    
-    code = llm.extract_code_from_response(response)
-    
-    output_path = os.path.join("code_completion_results", f"code_{int(time.time())}.py")
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
-    with open(output_path, 'w') as f:
-        f.write(code)
-    
-    print(f"Completed code saved to {output_path}")
 
 if __name__ == "__main__":
     main()
