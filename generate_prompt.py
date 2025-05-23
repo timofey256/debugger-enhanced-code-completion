@@ -112,12 +112,12 @@ def generate_prompt_as_string(traces_path) -> None:
     return prompt
 
 def main(argv: list[str] = sys.argv[1:]) -> None:
-    #src = argv[0] if argv else None
-    src = "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/flask/auto_debug.json"
+    src = argv[0] if argv else None
+    #src = "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/auto_debug.json"
     all_traces = read_json(src)
     trace = all_traces[0] 
     prompt = build_prompt(trace)
-    with open("/home/tymofii/school/isp/debugger-enhanced-code-completion/prompt_log/prompt.txt", "rw") as f:
+    with open("/home/tymofii/school/isp/debugger-enhanced-code-completion/prompt_log/prompt.txt", "w") as f:
         f.write(prompt)
 
 if __name__ == "__main__":
