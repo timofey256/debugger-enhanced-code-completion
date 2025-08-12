@@ -1,0 +1,53 @@
+[
+  {
+    "event": "call",
+    "func_name": "get_available_units",
+    "file_name": "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/units.py",
+    "line_no": 31,
+    "source": "def get_available_units(category: str) -> Tuple[str, ...]:",
+    "locals": {
+      "category": "'length'"
+    },
+    "arg": null
+  },
+  {
+    "event": "line",
+    "func_name": "get_available_units",
+    "file_name": "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/units.py",
+    "line_no": 32,
+    "source": "raise NotImplementedError('TODO')",
+    "locals": {
+      "category": "'length'"
+    },
+    "arg": null
+  },
+  {
+    "event": "exception",
+    "func_name": "get_available_units",
+    "file_name": "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/units.py",
+    "line_no": 32,
+    "source": "raise NotImplementedError('TODO')",
+    "locals": {
+      "category": "'length'"
+    },
+    "arg": null,
+    "exception_type": "<class 'NotImplementedError'>",
+    "exception_value": "NotImplementedError('TODO')",
+    "exception_traceback": "['  File \"/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/units.py\", line 32, in get_available_units\\n    raise NotImplementedError(\\'TODO\\')\\n']"
+  },
+  {
+    "event": "return",
+    "func_name": "get_available_units",
+    "file_name": "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/units.py",
+    "line_no": 32,
+    "source": "raise NotImplementedError('TODO')",
+    "locals": {
+      "category": "'length'"
+    },
+    "arg": "None"
+  },
+  {
+    "event": "exception",
+    "exception": "Traceback (most recent call last):\n  File \"/home/tymofii/school/isp/debugger-enhanced-code-completion/main.py\", line 155, in debug_test_case\n    test_case()\n    ~~~~~~~~~^^\n  File \"<string>\", line 82, in test_get_available_units\n  File \"/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/units.py\", line 32, in get_available_units\n    raise NotImplementedError('TODO')\nNotImplementedError: TODO\n"
+  }
+]

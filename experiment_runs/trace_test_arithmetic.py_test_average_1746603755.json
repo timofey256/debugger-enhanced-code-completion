@@ -1,0 +1,69 @@
+[
+  {
+    "event": "call",
+    "func_name": "average",
+    "file_name": "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/arithmetic.py",
+    "line_no": 35,
+    "source": "def average(numbers: List[Number]) -> Decimal:",
+    "locals": {
+      "numbers": [
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "arg": null
+  },
+  {
+    "event": "line",
+    "func_name": "average",
+    "file_name": "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/arithmetic.py",
+    "line_no": 36,
+    "source": "raise NotImplementedError('TODO')",
+    "locals": {
+      "numbers": [
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "arg": null
+  },
+  {
+    "event": "exception",
+    "func_name": "average",
+    "file_name": "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/arithmetic.py",
+    "line_no": 36,
+    "source": "raise NotImplementedError('TODO')",
+    "locals": {
+      "numbers": [
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "arg": null,
+    "exception_type": "<class 'NotImplementedError'>",
+    "exception_value": "NotImplementedError('TODO')",
+    "exception_traceback": "['  File \"/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/arithmetic.py\", line 36, in average\\n    raise NotImplementedError(\\'TODO\\')\\n']"
+  },
+  {
+    "event": "return",
+    "func_name": "average",
+    "file_name": "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/arithmetic.py",
+    "line_no": 36,
+    "source": "raise NotImplementedError('TODO')",
+    "locals": {
+      "numbers": [
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "arg": "None"
+  },
+  {
+    "event": "exception",
+    "exception": "Traceback (most recent call last):\n  File \"/home/tymofii/school/isp/debugger-enhanced-code-completion/main.py\", line 155, in debug_test_case\n    test_case()\n    ~~~~~~~~~^^\n  File \"<string>\", line 58, in test_average\n  File \"/home/tymofii/school/isp/debugger-enhanced-code-completion/example/calculator/src/calculator/arithmetic.py\", line 36, in average\n    raise NotImplementedError('TODO')\nNotImplementedError: TODO\n"
+  }
+]

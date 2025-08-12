@@ -1,0 +1,16 @@
+Based on the trace, the issue is in the `additionalProperties` function in `jsonschema/_keywords.py` where there's a `NotImplementedError` that needs to be removed and the actual implementation needs to be uncommented. Here's the diff:
+
+```diff
+--- /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/_keywords.py
++++ /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/_keywords.py
+@@ -36,7 +36,6 @@
+ def additionalProperties(validator, aP, instance, schema):
+     if not validator.is_type(instance, "object"):
+         return
+-    raise NotImplementedError("TODO remove me")
+ 
+     extras = set(find_additional_properties(instance, schema))
+ 
+```
+
+The diff removes the `NotImplementedError` line while keeping the rest of the function implementation intact. The line numbers and context match exactly with what's shown in the trace (Block 9, lines 36-39).

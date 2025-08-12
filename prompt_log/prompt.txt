@@ -1,0 +1,330 @@
+You are acting as a coding assistant who produces **atomic code patches**.
+
+Goal → **complete / fix** the code so the program runs correctly.
+
+## Exception type: NotImplementedError
+## Exception message: TODO
+
+## Runtime trace
+Block 0:
+File: /usr/lib64/python3.13/unittest/case.py
+Function name: testPartExecutor
+Line: 58
+Context:
+48    :         self.result = result
+49    :         self.result_supports_subtests = hasattr(result, "addSubTest")
+50    :         self.success = True
+51    :         self.expectedFailure = None
+52    : 
+53    :     @contextlib.contextmanager
+54    :     def testPartExecutor(self, test_case, subTest=False):
+55    :         old_success = self.success
+56    :         self.success = True
+57    :         try:
+58 -> :             yield
+59    :         except KeyboardInterrupt:
+60    :             raise
+61    :         except SkipTest as e:
+62    :             self.success = False
+63    :             _addSkip(self.result, test_case, str(e))
+64    :         except _ShouldStop:
+65    :             pass
+66    :         except:
+67    :             exc_info = sys.exc_info()
+68    :             if self.expecting_failure:
+Locals: {'self': '<unittest.case._Outcome object at 0x7ff3a11d6b30>', 'test_case': '<jsonschema.tests.test_jsonschema_test_suite.TestDraft3 testMethod=test_additionalProperties_additionalProperties_are_allowed_by_default_additional_properties_are_allowed>', 'subTest': 'False', 'old_success': 'True', 'exc_info': 'None'}
+
+Block 1:
+File: /usr/lib64/python3.13/unittest/case.py
+Function name: run
+Line: 651
+Context:
+641    :             outcome = _Outcome(result)
+642    :             start_time = time.perf_counter()
+643    :             try:
+644    :                 self._outcome = outcome
+645    : 
+646    :                 with outcome.testPartExecutor(self):
+647    :                     self._callSetUp()
+648    :                 if outcome.success:
+649    :                     outcome.expecting_failure = expecting_failure
+650    :                     with outcome.testPartExecutor(self):
+651 -> :                         self._callTestMethod(testMethod)
+652    :                     outcome.expecting_failure = False
+653    :                     with outcome.testPartExecutor(self):
+654    :                         self._callTearDown()
+655    :                 self.doCleanups()
+656    :                 self._addDuration(result, (time.perf_counter() - start_time))
+657    : 
+658    :                 if outcome.success:
+659    :                     if expecting_failure:
+660    :                         if outcome.expectedFailure:
+661    :                             self._addExpectedFailure(result, outcome.expectedFailure)
+Locals: {'self': '<jsonschema.tests.test_jsonschema_test_suite.TestDraft3 testMethod=test_additionalProperties_additionalProperties_are_allowed_by_default_additional_properties_are_allowed>', 'result': '<TestCaseFunction test_additionalProperties_additionalProperties_are_allowed_by_default_additional_properties_are_allowed>', 'stopTestRun': 'None', 'testMethod': '<bound method _Test.to_unittest_method.<locals>.fn of <jsonschema.tests.test_jsonschema_test_suite.TestDraft3 testMethod=test_additionalProperties_additionalProperties_are_allowed_by_default_additional_properties_are_allowed>>', 'expecting_failure': 'False', 'outcome': 'None', 'start_time': '311.828268159'}
+
+Block 2:
+File: /usr/lib64/python3.13/unittest/case.py
+Function name: _callTestMethod
+Line: 606
+Context:
+596    :         except AttributeError:
+597    :             warnings.warn("TestResult has no addDuration method",
+598    :                           RuntimeWarning)
+599    :         else:
+600    :             addDuration(self, elapsed)
+601    : 
+602    :     def _callSetUp(self):
+603    :         self.setUp()
+604    : 
+605    :     def _callTestMethod(self, method):
+606 -> :         if method() is not None:
+607    :             warnings.warn(f'It is deprecated to return a value that is not None from a '
+608    :                           f'test case ({method})', DeprecationWarning, stacklevel=3)
+609    : 
+610    :     def _callTearDown(self):
+611    :         self.tearDown()
+612    : 
+613    :     def _callCleanup(self, function, /, *args, **kwargs):
+614    :         function(*args, **kwargs)
+615    : 
+616    :     def run(self, result=None):
+Locals: {'self': '<jsonschema.tests.test_jsonschema_test_suite.TestDraft3 testMethod=test_additionalProperties_additionalProperties_are_allowed_by_default_additional_properties_are_allowed>', 'method': '<bound method _Test.to_unittest_method.<locals>.fn of <jsonschema.tests.test_jsonschema_test_suite.TestDraft3 testMethod=test_additionalProperties_additionalProperties_are_allowed_by_default_additional_properties_are_allowed>>'}
+
+Block 3:
+File: /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/tests/_suite.py
+Function name: fn
+Line: 234
+Context:
+224    :                 self.version.name,
+225    :                 self.subject,
+226    :                 self.case_description,
+227    :                 self.description,
+228    :             ],
+229    :         )
+230    : 
+231    :     def to_unittest_method(self, skip=lambda test: None, **kwargs):
+232    :         if self.valid:
+233    :             def fn(this):
+234 -> :                 self.validate(**kwargs)
+235    :         else:
+236    :             def fn(this):
+237    :                 with this.assertRaises(jsonschema.ValidationError):
+238    :                     self.validate(**kwargs)
+239    : 
+240    :         fn.__name__ = "_".join(
+241    :             [
+242    :                 "test",
+243    :                 _DELIMITERS.sub("_", self.subject),
+244    :                 _DELIMITERS.sub("_", self.case_description),
+Locals: {'this': '<jsonschema.tests.test_jsonschema_test_suite.TestDraft3 testMethod=test_additionalProperties_additionalProperties_are_allowed_by_default_additional_properties_are_allowed>', 'kwargs': "{'Validator': <class 'jsonschema.validators.Draft3Validator'>, 'format_checker': <FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>}", 'self': '<Test draft3 > additionalProperties > additionalProperties are allowed by default > additional properties are allowed>'}
+
+Block 4:
+File: /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/tests/_suite.py
+Function name: validate
+Line: 257
+Context:
+247    :         )
+248    :         reason = skip(self)
+249    :         if reason is None or os.environ.get("JSON_SCHEMA_DEBUG", "0") != "0":
+250    :             return fn
+251    :         elif os.environ.get("JSON_SCHEMA_EXPECTED_FAILURES", "0") != "0":  # pragma: no cover  # noqa: E501
+252    :             return unittest.expectedFailure(fn)
+253    :         else:
+254    :             return unittest.skip(reason)(fn)
+255    : 
+256    :     def validate(self, Validator, **kwargs):
+257 -> :         Validator.check_schema(self.schema)
+258    :         validator = Validator(
+259    :             schema=self.schema,
+260    :             registry=self._remotes,
+261    :             **kwargs,
+262    :         )
+263    :         if os.environ.get("JSON_SCHEMA_DEBUG", "0") != "0":  # pragma: no cover
+264    :             breakpoint()  # noqa: T100
+265    :         validator.validate(instance=self.data)
+266    : 
+267    :     def validate_ignoring_errors(self, Validator):  # pragma: no cover
+Locals: {'self': '<Test draft3 > additionalProperties > additionalProperties are allowed by default > additional properties are allowed>', 'Validator': "<class 'jsonschema.validators.Draft3Validator'>", 'kwargs': "{'format_checker': <FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>}"}
+
+Block 5:
+File: /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/validators.py
+Function name: check_schema
+Line: 316
+Context:
+306    : 
+307    :         @classmethod
+308    :         def check_schema(cls, schema, format_checker=_UNSET):
+309    :             Validator = validator_for(cls.META_SCHEMA, default=cls)
+310    :             if format_checker is _UNSET:
+311    :                 format_checker = Validator.FORMAT_CHECKER
+312    :             validator = Validator(
+313    :                 schema=cls.META_SCHEMA,
+314    :                 format_checker=format_checker,
+315    :             )
+316 -> :             for error in validator.iter_errors(schema):
+317    :                 raise exceptions.SchemaError.create_from(error)
+318    : 
+319    :         @property
+320    :         def resolver(self):
+321    :             warnings.warn(
+322    :                 (
+323    :                     f"Accessing {self.__class__.__name__}.resolver is "
+324    :                     "deprecated as of v4.18.0, in favor of the "
+325    :                     "https://github.com/python-jsonschema/referencing "
+326    :                     "library, which provides more compliant referencing "
+Locals: {'cls': "<class 'jsonschema.validators.Draft3Validator'>", 'schema': "{'properties': {'foo': {}, 'bar': {}}}", 'format_checker': "<FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>", 'Validator': "<class 'jsonschema.validators.Draft3Validator'>", 'validator': "Draft3Validator(schema={'$schema': 'http://json-...ft-03/schema#', 'default': {}, 'dependencies': {'exclusiveMaximum': 'maximum', 'exclusiveMinimum': 'minimum'}, 'id': 'http://json-...ft-03/schema#', ...}, format_checker=<FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>)"}
+
+Block 6:
+File: /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/validators.py
+Function name: iter_errors
+Line: 384
+Context:
+374    :                     f"False schema does not allow {instance!r}",
+375    :                     validator=None,
+376    :                     validator_value=None,
+377    :                     instance=instance,
+378    :                     schema=_schema,
+379    :                 )
+380    :                 return
+381    : 
+382    :             for validator, k, v in validators:
+383    :                 errors = validator(self, v, instance, _schema) or ()
+384 -> :                 for error in errors:
+385    :                     # set details if not already set by the called fn
+386    :                     error._set(
+387    :                         validator=k,
+388    :                         validator_value=v,
+389    :                         instance=instance,
+390    :                         schema=_schema,
+391    :                         type_checker=self.TYPE_CHECKER,
+392    :                     )
+393    :                     if k not in {"if", "$ref"}:
+394    :                         error.schema_path.appendleft(k)
+Locals: {'self': "Draft3Validator(schema={'$schema': 'http://json-...ft-03/schema#', 'default': {}, 'dependencies': {'exclusiveMaximum': 'maximum', 'exclusiveMinimum': 'minimum'}, 'id': 'http://json-...ft-03/schema#', ...}, format_checker=<FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>)", 'instance': "{'properties': {'foo': {}, 'bar': {}}}", '_schema': "{'$schema': 'http://json-schema.org/draft-03/schema#', 'id': 'http://json-schema.org/draft-03/schema#', 'type': 'object', 'properties': {'type': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True, 'default': 'any'}, 'properties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'patternProperties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'additionalProperties': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'items': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'additionalItems': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'required': {'type': 'boolean', 'default': False}, 'dependencies': {'type': 'object', 'additionalProperties': {'type': ['string', 'array', {'$ref': '#'}], 'items': {'type': 'string'}}, 'default': {}}, 'minimum': {'type': 'number'}, 'maximum': {'type': 'number'}, 'exclusiveMinimum': {'type': 'boolean', 'default': False}, 'exclusiveMaximum': {'type': 'boolean', 'default': False}, 'minItems': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxItems': {'type': 'integer', 'minimum': 0}, 'uniqueItems': {'type': 'boolean', 'default': False}, 'pattern': {'type': 'string', 'format': 'regex'}, 'minLength': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxLength': {'type': 'integer'}, 'enum': {'type': 'array', 'minItems': 1, 'uniqueItems': True}, 'default': {'type': 'any'}, 'title': {'type': 'string'}, 'description': {'type': 'string'}, 'format': {'type': 'string'}, 'divisibleBy': {'type': 'number', 'minimum': 0, 'exclusiveMinimum': True, 'default': 1}, 'disallow': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True}, 'extends': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'id': {'type': 'string'}, '$ref': {'type': 'string'}, '$schema': {'type': 'string', 'format': 'uri'}}, 'dependencies': {'exclusiveMinimum': 'minimum', 'exclusiveMaximum': 'maximum'}, 'default': {}}", 'k': "'properties'", 'v': "{'type': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True, 'default': 'any'}, 'properties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'patternProperties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'additionalProperties': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'items': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'additionalItems': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'required': {'type': 'boolean', 'default': False}, 'dependencies': {'type': 'object', 'additionalProperties': {'type': ['string', 'array', {'$ref': '#'}], 'items': {'type': 'string'}}, 'default': {}}, 'minimum': {'type': 'number'}, 'maximum': {'type': 'number'}, 'exclusiveMinimum': {'type': 'boolean', 'default': False}, 'exclusiveMaximum': {'type': 'boolean', 'default': False}, 'minItems': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxItems': {'type': 'integer', 'minimum': 0}, 'uniqueItems': {'type': 'boolean', 'default': False}, 'pattern': {'type': 'string', 'format': 'regex'}, 'minLength': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxLength': {'type': 'integer'}, 'enum': {'type': 'array', 'minItems': 1, 'uniqueItems': True}, 'default': {'type': 'any'}, 'title': {'type': 'string'}, 'description': {'type': 'string'}, 'format': {'type': 'string'}, 'divisibleBy': {'type': 'number', 'minimum': 0, 'exclusiveMinimum': True, 'default': 1}, 'disallow': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True}, 'extends': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'id': {'type': 'string'}, '$ref': {'type': 'string'}, '$schema': {'type': 'string', 'format': 'uri'}}", 'validators': "[(<function type_draft3 at 0x7ff3a1b1c220>, 'type', 'object'), (<function properties_draft3 at 0x7ff3a1b1c180>, 'properties', {'type': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True, 'default': 'any'}, 'properties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'patternProperties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'additionalProperties': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'items': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'additionalItems': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'required': {'type': 'boolean', 'default': False}, 'dependencies': {'type': 'object', 'additionalProperties': {'type': ['string', 'array', {'$ref': '#'}], 'items': {'type': 'string'}}, 'default': {}}, 'minimum': {'type': 'number'}, 'maximum': {'type': 'number'}, 'exclusiveMinimum': {'type': 'boolean', 'default': False}, 'exclusiveMaximum': {'type': 'boolean', 'default': False}, 'minItems': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxItems': {'type': 'integer', 'minimum': 0}, 'uniqueItems': {'type': 'boolean', 'default': False}, 'pattern': {'type': 'string', 'format': 'regex'}, 'minLength': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxLength': {'type': 'integer'}, 'enum': {'type': 'array', 'minItems': 1, 'uniqueItems': True}, 'default': {'type': 'any'}, 'title': {'type': 'string'}, 'description': {'type': 'string'}, 'format': {'type': 'string'}, 'divisibleBy': {'type': 'number', 'minimum': 0, 'exclusiveMinimum': True, 'default': 1}, 'disallow': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True}, 'extends': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'id': {'type': 'string'}, '$ref': {'type': 'string'}, '$schema': {'type': 'string', 'format': 'uri'}}), (<function dependencies_draft3 at 0x7ff3a1b1bba0>, 'dependencies', {'exclusiveMinimum': 'minimum', 'exclusiveMaximum': 'maximum'})]", 'validator': '<function properties_draft3 at 0x7ff3a1b1c180>', 'errors': '<generator object properties_draft3 at 0x7ff3a100e560>', 'applicable_validators': '<function ignore_ref_siblings at 0x7ff3a1b1bb00>'}
+
+Block 7:
+File: /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/_legacy_keywords.py
+Function name: properties_draft3
+Line: 176
+Context:
+166    :         message = f"{instance!r} is {cmp} the maximum of {maximum!r}"
+167    :         yield ValidationError(message)
+168    : 
+169    : 
+170    : def properties_draft3(validator, properties, instance, schema):
+171    :     if not validator.is_type(instance, "object"):
+172    :         return
+173    : 
+174    :     for property, subschema in properties.items():
+175    :         if property in instance:
+176 -> :             yield from validator.descend(
+177    :                 instance[property],
+178    :                 subschema,
+179    :                 path=property,
+180    :                 schema_path=property,
+181    :             )
+182    :         elif subschema.get("required", False):
+183    :             error = ValidationError(f"{property!r} is a required property")
+184    :             error._set(
+185    :                 validator="required",
+186    :                 validator_value=subschema["required"],
+Locals: {'validator': "Draft3Validator(schema={'$schema': 'http://json-...ft-03/schema#', 'default': {}, 'dependencies': {'exclusiveMaximum': 'maximum', 'exclusiveMinimum': 'minimum'}, 'id': 'http://json-...ft-03/schema#', ...}, format_checker=<FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>)", 'properties': "{'type': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True, 'default': 'any'}, 'properties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'patternProperties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'additionalProperties': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'items': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'additionalItems': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'required': {'type': 'boolean', 'default': False}, 'dependencies': {'type': 'object', 'additionalProperties': {'type': ['string', 'array', {'$ref': '#'}], 'items': {'type': 'string'}}, 'default': {}}, 'minimum': {'type': 'number'}, 'maximum': {'type': 'number'}, 'exclusiveMinimum': {'type': 'boolean', 'default': False}, 'exclusiveMaximum': {'type': 'boolean', 'default': False}, 'minItems': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxItems': {'type': 'integer', 'minimum': 0}, 'uniqueItems': {'type': 'boolean', 'default': False}, 'pattern': {'type': 'string', 'format': 'regex'}, 'minLength': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxLength': {'type': 'integer'}, 'enum': {'type': 'array', 'minItems': 1, 'uniqueItems': True}, 'default': {'type': 'any'}, 'title': {'type': 'string'}, 'description': {'type': 'string'}, 'format': {'type': 'string'}, 'divisibleBy': {'type': 'number', 'minimum': 0, 'exclusiveMinimum': True, 'default': 1}, 'disallow': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True}, 'extends': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'id': {'type': 'string'}, '$ref': {'type': 'string'}, '$schema': {'type': 'string', 'format': 'uri'}}", 'instance': "{'properties': {'foo': {}, 'bar': {}}}", 'schema': "{'$schema': 'http://json-schema.org/draft-03/schema#', 'id': 'http://json-schema.org/draft-03/schema#', 'type': 'object', 'properties': {'type': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True, 'default': 'any'}, 'properties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'patternProperties': {'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}, 'additionalProperties': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'items': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'additionalItems': {'type': [{'$ref': '#'}, 'boolean'], 'default': {}}, 'required': {'type': 'boolean', 'default': False}, 'dependencies': {'type': 'object', 'additionalProperties': {'type': ['string', 'array', {'$ref': '#'}], 'items': {'type': 'string'}}, 'default': {}}, 'minimum': {'type': 'number'}, 'maximum': {'type': 'number'}, 'exclusiveMinimum': {'type': 'boolean', 'default': False}, 'exclusiveMaximum': {'type': 'boolean', 'default': False}, 'minItems': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxItems': {'type': 'integer', 'minimum': 0}, 'uniqueItems': {'type': 'boolean', 'default': False}, 'pattern': {'type': 'string', 'format': 'regex'}, 'minLength': {'type': 'integer', 'minimum': 0, 'default': 0}, 'maxLength': {'type': 'integer'}, 'enum': {'type': 'array', 'minItems': 1, 'uniqueItems': True}, 'default': {'type': 'any'}, 'title': {'type': 'string'}, 'description': {'type': 'string'}, 'format': {'type': 'string'}, 'divisibleBy': {'type': 'number', 'minimum': 0, 'exclusiveMinimum': True, 'default': 1}, 'disallow': {'type': ['string', 'array'], 'items': {'type': ['string', {'$ref': '#'}]}, 'uniqueItems': True}, 'extends': {'type': [{'$ref': '#'}, 'array'], 'items': {'$ref': '#'}, 'default': {}}, 'id': {'type': 'string'}, '$ref': {'type': 'string'}, '$schema': {'type': 'string', 'format': 'uri'}}, 'dependencies': {'exclusiveMinimum': 'minimum', 'exclusiveMaximum': 'maximum'}, 'default': {}}", 'property': "'properties'", 'subschema': "{'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}"}
+
+Block 8:
+File: /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/validators.py
+Function name: descend
+Line: 432
+Context:
+422    :                         specification.create_resource(schema),
+423    :                     )
+424    :                 evolved = self.evolve(schema=schema, _resolver=resolver)
+425    : 
+426    :             for k, v in applicable_validators(schema):
+427    :                 validator = evolved.VALIDATORS.get(k)
+428    :                 if validator is None:
+429    :                     continue
+430    : 
+431    :                 errors = validator(evolved, v, instance, schema) or ()
+432 -> :                 for error in errors:
+433    :                     # set details if not already set by the called fn
+434    :                     error._set(
+435    :                         validator=k,
+436    :                         validator_value=v,
+437    :                         instance=instance,
+438    :                         schema=schema,
+439    :                         type_checker=evolved.TYPE_CHECKER,
+440    :                     )
+441    :                     if k not in {"if", "$ref"}:
+442    :                         error.schema_path.appendleft(k)
+Locals: {'self': "Draft3Validator(schema={'$schema': 'http://json-...ft-03/schema#', 'default': {}, 'dependencies': {'exclusiveMaximum': 'maximum', 'exclusiveMinimum': 'minimum'}, 'id': 'http://json-...ft-03/schema#', ...}, format_checker=<FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>)", 'instance': "{'foo': {}, 'bar': {}}", 'schema': "{'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}", 'path': "'properties'", 'schema_path': "'properties'", 'resolver': "Resolver(_base_uri='http://json-schema.org/draft-03/schema', _registry=<Registry (20 resources, 1 uncrawled)>)", 'evolved': "Draft3Validator(schema={'additionalProperties': {'$ref': '#'}, 'default': {}, 'type': 'object'}, format_checker=<FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>)", 'k': "'additionalProperties'", 'v': "{'$ref': '#'}", 'validator': '<function additionalProperties at 0x7ff3a1d23d80>', 'errors': '<generator object additionalProperties at 0x7ff3a1915800>', 'applicable_validators': '<function ignore_ref_siblings at 0x7ff3a1b1bb00>', 'specification': "<Specification name='draft-03'>"}
+
+Block 9:
+File: /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/_keywords.py
+Function name: additionalProperties
+Line: 43
+Context:
+33    :         yield from validator.descend(instance=property, schema=propertyNames)
+34    : 
+35    : 
+36    : def additionalProperties(validator, aP, instance, schema):
+37    :     if not validator.is_type(instance, "object"):
+38    :         return
+39    : 
+40    :     extras = set(find_additional_properties(instance, schema))
+41    : 
+42    :     if validator.is_type(aP, "object"):
+43 -> :         raise NotImplementedError("TODO")
+44    :     elif not aP and extras:
+45    :         if "patternProperties" in schema:
+46    :             verb = "does" if len(extras) == 1 else "do"
+47    :             joined = ", ".join(repr(each) for each in sorted(extras))
+48    :             patterns = ", ".join(
+49    :                 repr(each) for each in sorted(schema["patternProperties"])
+50    :             )
+51    :             error = f"{joined} {verb} not match any of the regexes: {patterns}"
+52    :             yield ValidationError(error)
+53    :         else:
+Locals: {'validator': "Draft3Validator(schema={'additionalProperties': {'$ref': '#'}, 'default': {}, 'type': 'object'}, format_checker=<FormatChecker checkers=['color', 'date', 'date-time', 'email', 'host-name', 'idn-email', 'ip-address', 'ipv6', 'regex', 'time', 'uri']>)", 'aP': "{'$ref': '#'}", 'instance': "{'foo': {}, 'bar': {}}", 'schema': "{'type': 'object', 'additionalProperties': {'$ref': '#'}, 'default': {}}", 'extras': "{'bar', 'foo'}"}
+
+
+## What you must do
+1. **Diagnose** the issue using the trace frames and source context provided.
+2. Produce **a unified diff patch** (one per file) that fixes the issue.
+   - Use the unified diff format:
+     - `--- path/to/file.py` for the original file
+     - `+++ path/to/file.py` for the new version
+     - Each hunk begins with `@@ -a,b +c,d @@`
+     - Lines to delete start with `-`, lines to add start with `+`
+     - Include at most 3 lines of **unchanged context** above and below (i.e., use `-U3`)
+   - **Do not** include commentary or prose—output only the diff.
+3. If multiple files need a change, output multiple diff blocks.
+4. **Carefully set the starting line number `a` in the hunk header** so it matches the first unchanged or deleted line from the original file.
+5. The diff **must exactly align** with the source context shown in the trace blocks. Do not shift it up or down.
+6. Make sure to include the whole file path, not just the file name.
+7. Make sure you copy all the comments from the source code.
+
+### Example - correct diff with aligned header and context
+Original context:
+  40 : def scale(x):
+  41 :     if x is None:
+  42 :         return 0
+  43 :     return x * 2
+
+You want to modify lines 41-43. Then your diff must look like this:
+
+```diff
+--- src/utils/math.py
++++ src/utils/math.py
+@@ -41,3 +41,4 @@
+     if x is None:
+         return 0
+     return x * 2
++    # New logic here
+```
+
+⚠️ Common mistakes to avoid:
+- Incorrect start line in the hunk (off by 1 or 2)
+- Including too many context lines and shifting the diff
+- Forgetting to match the source indentation
+
+Nothing else—just the diff.

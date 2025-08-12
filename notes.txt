@@ -1,0 +1,89 @@
+- Think about how to give this information. Context.
+- Quantify the results. What brings performance. 
+- Implement batch testing mode. Authomatic eval. Correct = compilers and runs all the tests.
+
+https://arxiv.org/pdf/2410.01215
+
+
+============================
+
+Can we change pytest to include debugging? And use it to run the tests extracting debugging information.
+
+if you need to implement a method that's takes json, then it's useful to have a json example.
+
+find json/doc-heavy project, something that works a specific kinds of documents. 
+
+reflection on given parameters. same as with json.
+
+run some experiments with that. try to characterize in which cases it actually helps. distinction between context-light/heavy functions
+
+if test function takes an argument ARG and goes ARGS.PROPERTY.PROPERTY, then we can say "is property complex" 
+and then it makes sense to use reflection there.
+
+find something that processes some data/works with complex objects,
+    blender/
+    microsoft word/
+    json/
+    raw xml/
+    http server that gest requests from the user and assume something about the data (?)/
+    anything like postman not only unit tests.
+
+
+GOALS:
+    - MAIN: Finish infra.
+    - What kind of objects 
+
+NEXT MEETING: 23.05 Wednesday 11:00
+
+==============================
+
+TODO:
+ - [ ] Finish infra.
+    - [X] Fix debug info collection.
+    - [X] Generate proper prompts for debug info.
+    - [X] Add patch logic.
+    - [ ] Automated testing before/after patch. Report generation.
+
+ - [ ] Test the infra for different projects. 
+    - [ ] Test on text-heavy projects. Something with json/raw-text/xml.
+
+ - [ ] Idea: "property-complex" functions. Can we measure this?
+
+ - [ ] Works only for exceptions. Logic mis-behaviour is only hitted where exception occurs. Context unreachable.
+
+=============================
+
+repro: 
+    - clone repo.
+    - copy conftest.py there.
+    - run pytest -s -q
+    - use it to generate prompt using generate_prompt.py
+    -
+
+PRESENATION:
+
+- Several steps through CLI.
+
+===============
+
+- Keep list of what learned.
+- See what Copilot does.
+- If someone has a project, ask them to try to run it on it.
+- What to do with logic problems. Now only works on exceptions.
+- Can it work better if you use agent archictecture. Using tools etc. 
+  I can give you examples of what variables can do.
+- Finish VSC plugin: python code as server, talk it through HTTP
+- Here is API for exploring runtime information you might be able to get.
+- Find a project where runtime information is very important.
+- Nice things for tests would be smth that has Postman collection: tests for http methods.
+- Record HTTP requests and try to build code around this: [Darklang].
+    Complete code. Match comment or/and response. Web programming refinement of an idea.
+    You write a handler for the request with just an exception in it. Run the thing, invokes the request,
+    then you can use the AI agent to get the implementation, it will have acccess to the sample request.
+    If request comes with a lot information - sample json, etc. - it will be useful.
+    try postman for this? for  
+
+
+==========================
+
+NEXT: 13.06.2025 12:00

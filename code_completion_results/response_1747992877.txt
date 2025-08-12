@@ -1,0 +1,19 @@
+Based on the trace, the issue occurs in `additionalProperties` when handling a schema with `$ref`. The function raises `NotImplementedError` for object-type `aP` (additionalProperties), but should handle `$ref` cases by descending into the referenced schema.
+
+Here's the diff to fix this:
+
+```diff
+--- /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/_keywords.py
++++ /home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/jsonschema/_keywords.py
+@@ -39,7 +39,9 @@
+     extras = set(find_additional_properties(instance, schema))
+ 
+     if validator.is_type(aP, "object"):
+-        raise NotImplementedError("TODO")
++        for extra in extras:
++            for error in validator.descend(instance[extra], aP, path=extra):
++                yield error
+     elif not aP and extras:
+         if "patternProperties" in schema:
+             verb = "does" if len(extras) == 1 else "do"
+```

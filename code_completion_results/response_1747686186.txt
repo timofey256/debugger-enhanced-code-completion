@@ -1,0 +1,16 @@
+Based on the trace, the issue is that `get_debug_flag()` in `flask/helpers.py` raises a `NotImplementedError`. The function should check the `FLASK_DEBUG` environment variable as indicated by its docstring. Here's the fix:
+
+```diff
+--- src/flask/helpers.py
++++ src/flask/helpers.py
+@@ -28,7 +28,7 @@
+ def get_debug_flag() -> bool:
+     """Get whether debug mode should be enabled for the app, indicated by the
+     :envvar:`FLASK_DEBUG` environment variable. The default is ``False``.
+     """
+-    raise NotImplementedError("TODO")
++    return os.environ.get("FLASK_DEBUG", "").lower() in ("1", "on", "true")
+ 
+ 
+ def get_load_dotenv(default: bool = True) -> bool:
+```
