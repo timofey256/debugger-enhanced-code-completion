@@ -1,8 +1,7 @@
-import json
 import sys
 import os
 import requests
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import time
 
 class LLMInterface:
@@ -26,7 +25,7 @@ class LLMInterface:
         self.model = model
         self.base_url = "https://api.deepseek.com/v1/chat/completions"
     
-    def complete_code(self, prompt: str, max_tokens: int = 2000) -> Dict[str, Any]:
+    def complete_code(self, prompt: str, max_tokens: int = 2000) -> str:
         """
         Send a code completion request to the LLM.
         
@@ -56,10 +55,10 @@ class LLMInterface:
             )
             
             response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
+            return str(response.json()["choices"][0]["message"]["content"])
         except Exception as e:
             print(f"Error sending request to LLM: {str(e)}")
-            return {"error": str(e)}
+            return str(e)
     
     def extract_code_from_response(self, response: Dict[str, Any]) -> str:
         """

@@ -105,7 +105,7 @@ def read_json(source: str | Path | None) -> list[dict]:
     raw = sys.stdin.read() if source in (None, "-", "") else Path(source).read_text()
     return json.loads(raw)
 
-def generate_prompt_as_string(traces_path) -> None:
+def generate_prompt_as_string(traces_path) -> str:
     all_traces = read_json(traces_path)
     trace = all_traces[0] 
     prompt = build_prompt(trace)

@@ -1,5 +1,12 @@
 import json, pathlib
+import jsonpickle
 import pytest
+
+# TODO: this is stupid => find a smarter way to avoid
+# basically, some objects are insanely large
+# and we don't want 3000+ lines of json dump of some single object
+# so we limit it's length
+CUTOFF_OFFSET = 1000
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -42,7 +49,7 @@ def pytest_runtest_makereport(item, call):
                     "line": tb.tb_lineno,
                     "func": frame.f_code.co_name,
                     # repr() prevents recursion / huge blobs
-                    "locals": {k: repr(v) for k, v in frame.f_locals.items()},
+                    "locals": {k: str(jsonpickle.dumps(v, unpicklable=False))[:CUTOFF_OFFSET] for k, v in frame.f_locals.items()},
                 }
             )
 
