@@ -42,10 +42,14 @@ pkgs.mkShell {
     python313Packages.typing-extensions
     python313Packages.jsonpickle
 
+    python313Packages.flask # for http backend
+
     ruff
 
     # Pyright language server/CLI (Node-based)
     nodejs_20
     pyright
+
+    vscode
   ];
 }
