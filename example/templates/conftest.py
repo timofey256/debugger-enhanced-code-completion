@@ -3,7 +3,7 @@ import jsonpickle
 import pytest
 
 # TODO: this is stupid => find a smarter way to avoid
-# basically, some objects are insanely large
+# basically, during serialization some objects are insanely large
 # and we don't want 3000+ lines of json dump of some single object
 # so we limit it's length
 CUTOFF_OFFSET = 1000
@@ -27,16 +27,15 @@ def pytest_configure(config):
     # place to accumulate results
     config._auto_debug_store = []
 
-# run *before* normal make-report so we keep excinfo
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
-    outcome = yield                # let pytest run the real hook chain
-    rep = outcome.get_result()     # TestReport
+    outcome = yield                
+    rep = outcome.get_result()    
 
     if rep.when != "call" or rep.passed:
-        return                     # only care about failing test body
+        return
 
-    excinfo = call.excinfo         # pytest.ExceptionInfo – live traceback
+    excinfo = call.excinfo        
     frames = []
     tb = excinfo.tb
     while tb:
@@ -48,7 +47,7 @@ def pytest_runtest_makereport(item, call):
                     "file": frame.f_code.co_filename,
                     "line": tb.tb_lineno,
                     "func": frame.f_code.co_name,
-                    # repr() prevents recursion / huge blobs
+                    # TODO: see above
                     "locals": {k: str(jsonpickle.dumps(v, unpicklable=False))[:CUTOFF_OFFSET] for k, v in frame.f_locals.items()},
                 }
             )
@@ -57,7 +56,7 @@ def pytest_runtest_makereport(item, call):
 
     item.config._auto_debug_store.append(
         {
-            "nodeid": item.nodeid,                 # fully-qualified test id
+            "nodeid": item.nodeid,  
             "exc_type": excinfo.type.__name__,
             "message": str(excinfo.value),
             "frames": frames,
