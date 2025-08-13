@@ -1,0 +1,46 @@
+{
+  "name": "pytest-smart-debugger",
+  "displayName": "Pytest Smart Debugger",
+  "publisher": "you",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.92.0" },
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:pytestSmartDebugger.runAll",
+    "onCommand:pytestSmartDebugger.tryDebug",
+    "onCommand:pytestSmartDebugger.applyPatch"
+  ],
+  "contributes": {
+    "commands": [
+      { "command": "pytestSmartDebugger.runAll", "title": "Pytest: Run All Tests" },
+      { "command": "pytestSmartDebugger.tryDebug", "title": "Pytest: Try to Debug Failed Test" },
+      { "command": "pytestSmartDebugger.applyPatch", "title": "Pytest: Apply Suggested Patch" }
+    ],
+    "configuration": {
+      "title": "Pytest Smart Debugger",
+      "properties": {
+        "pytestSmartDebugger.pythonPath": { "type": "string", "default": "python", "description": "Python executable" },
+        "pytestSmartDebugger.pytestPath":  { "type": "string", "default": "pytest", "description": "Pytest executable" },
+        "pytestSmartDebugger.pytestArgs":  { "type": "array",  "items": { "type":"string" }, "default": ["-q", "-s"], "description": "Extra pytest args" },
+        "pytestSmartDebugger.serverCommand": { "type": "string", "default": "${workspaceFolder}/python/server.py", "description": "Path to local debug server" },
+        "pytestSmartDebugger.serverPort":   { "type": "number", "default": 5123, "description": "Local server port" },
+        "pytestSmartDebugger.autoStartServer": { "type": "boolean", "default": true, "description": "Start server automatically when needed" },
+        "pytestSmartDebugger.useGitApply": { "type": "boolean", "default": true, "description": "Use `git apply` to apply unified diffs" }
+      }
+    },
+    "testing": {
+      "createDefaultProfiles": false
+    }
+  },
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "tsc -p ./",
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "typescript": "^5.4.0",
+    "@types/vscode": "^1.92.0"
+  }
+}

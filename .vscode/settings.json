@@ -1,0 +1,4 @@
+{
+  "pytestSmartDebugger.pytestPath": "python -m pytest",
+  "pytestSmartDebugger.pytestArgs": ["-q", "-s"]
+}
