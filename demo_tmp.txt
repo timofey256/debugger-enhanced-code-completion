@@ -1,5 +1,0 @@
-sk-1507109e863743bb9036a084b3802495
-
-python3 main.py /home/tymofii/school/isp/debugger-enhanced-code-completion/example/flask/tests/test_cli.py test_help_echo_exception
-
-python3 completion_model.py FILE 
