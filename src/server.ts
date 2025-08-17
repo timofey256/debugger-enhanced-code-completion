@@ -1,19 +1,23 @@
 import * as vscode from 'vscode';
 import { spawn } from 'child_process';
 import * as http from 'http';
+import { PatchResponse } from './patchFormat';
 
 let proc: import('child_process').ChildProcess | undefined;
 
-export async function ensureServerAndRequest(payload: any): Promise<string | undefined> {
+export type ServerReply =
+  | { kind: 'diff', diff: string } 
+  | { kind: 'both', data: PatchResponse, diff?: string };
+
+export async function ensureServerAndRequest(payload: any): Promise<ServerReply | undefined> {
   const cfg = vscode.workspace.getConfiguration('pytestSmartDebugger');
   const port = cfg.get<number>('serverPort') ?? 5123;
   const auto = cfg.get<boolean>('autoStartServer') ?? true;
 
-  // Probe the port
+  // Probe
   const alive = await isAlive(port);
   if (!alive && auto) {
     await startServer();
-    // Wait briefly then probe again
     await new Promise(r => setTimeout(r, 800));
   }
   const ok = await isAlive(port);
@@ -47,7 +51,7 @@ function isAlive(port: number): Promise<boolean> {
   });
 }
 
-function postJson(url: string, data: any): Promise<string> {
+function postJson(url: string, data: any): Promise<ServerReply> {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const req = http.request({
@@ -58,11 +62,27 @@ function postJson(url: string, data: any): Promise<string> {
       headers: { 'Content-Type': 'application/json' }
     }, res => {
       const chunks: Buffer[] = [];
+      const ctype = res.headers['content-type'] || '';
       res.on('data', c => chunks.push(c as Buffer));
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      res.on('end', () => {
+        const buf = Buffer.concat(chunks);
+        const text = buf.toString('utf8');
+
+        if (ctype.includes('application/json')) {
+          const json = JSON.parse(text) as PatchResponse;
+          resolve({ kind: 'both', data: json, diff: json.unified_diff });
+        } else {
+          if (text.trim().startsWith('diff')) {
+            resolve({ kind: 'diff', diff: text });
+          } else {
+            reject(new Error('Unexpected server response'));
+          }
+        }
+      });
     });
     req.on('error', reject);
     req.write(JSON.stringify(data));
     req.end();
   });
 }
+

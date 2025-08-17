@@ -17,9 +17,8 @@ export async function runPytest(
   const targets = request.include ?? collectAll(controller);
   for (const item of targets) run.enqueued(item);
 
-  // Build nodeids
   const nodeids = targets
-    .filter(t => t.children.size === 0) // leaves only
+    .filter(t => t.children.size === 0)
     .map(t => t.id);
 
   const isRunAll = !request.include || request.include.length === 0;
@@ -34,9 +33,6 @@ export async function runPytest(
   console.log(`Result out: ${out}`);
   console.log(`Result err: ${err}`);
 
-  // Very lightweight parsing: mark passed tests whose nodeid appear with " . " and failed with "F"/traceback.
-  // For real robustness, recommend enabling pytest-json-report and parsing its JSON.
-  const failedIds = new Set<string>();
   for (const item of targets) {
     if (out.includes(item.id) && /FAILED/.test(out)) { /* coarse */ }
   }
@@ -49,7 +45,6 @@ export async function runPytest(
     return re.test(combined) || reRev.test(combined);
   };
 
-  // Minimal heuristic: if output contains "<nodeid> FAILED"
   for (const item of targets) {
     run.started(item);
     const failed = failedIn(item.id);

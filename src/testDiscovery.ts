@@ -8,15 +8,12 @@ export async function discoverTests(controller: vscode.TestController) {
   const cwd = ws.uri.fsPath;
   const pytest = vscode.workspace.getConfiguration('pytestSmartDebugger').get<string>('pytestPath') ?? 'pytest';
 
-  // Collect tests: nodeids come from -q + --collect-only=pretty JSON-ish is plugin territory,
-  // so use standard verbose names with :: separators, then map back to files.
   const cp = spawn(pytest, ['--collect-only', '-q'], { cwd, shell: true });
   const chunks: string[] = [];
   cp.stdout.on('data', d => chunks.push(d.toString()));
   await new Promise((res) => cp.on('close', res));
   const lines = chunks.join('').split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Each line is a nodeid like tests/test_math.py::TestMath::test_add
   for (const node of lines) {
     if (node.startsWith('<') || node.includes('no tests')) continue;
     const [file, ...rest] = node.split('::');

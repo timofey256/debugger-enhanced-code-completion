@@ -1,51 +1,114 @@
 import * as vscode from 'vscode';
-import { spawn } from 'child_process';
-import * as os from 'os';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { FilePatch, PatchResponse } from './patchFormat';
 
-export async function applyUnifiedDiff(diff: string): Promise<boolean> {
-  const cfg = vscode.workspace.getConfiguration('pytestSmartDebugger');
-  const useGit = cfg.get<boolean>('useGitApply') ?? true;
+/**
+ * Apply patches provided by the server (structured hunks).
+ * - Uses 1-based line numbers from hunks.
+ * - Verifies context lines and old segment length.
+ * - Applies multiple hunks per file with running offset.
+ */
+export async function applyPatchesFromResponse(resp: PatchResponse): Promise<boolean> {
   const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!ws) return false;
-
-  const tmp = path.join(os.tmpdir(), 'pytest-smart-debugger.patch');
-  await fs.writeFile(tmp, diff, 'utf8');
-
-  if (useGit) {
-    const ok = await exec('git', ['apply', '--unsafe-paths', '--reject', '--whitespace=fix', tmp], ws);
-    if (ok) return true;
+  const patches = resp.patches ?? [];
+  if (!patches.length) {
+    vscode.window.showWarningMessage('No structured patches to apply.');
+    return false;
   }
-
-  // Fallback: naive apply (only supports simple hunks); production: use a proper diff library.
-  vscode.window.showWarningMessage('Falling back to naive patch application (may fail on complex hunks).');
-  return await naiveApply(ws, diff);
-}
-
-function exec(cmd: string, args: string[], cwd: string) {
-  return new Promise<boolean>(res => {
-    const p = spawn(cmd, args, { cwd, shell: true });
-    p.on('close', code => res(code === 0));
-  });
-}
-
-async function naiveApply(root: string, diff: string): Promise<boolean> {
-  // Extremely simplified: only handles patches with full file context and no renames.
   try {
-    const files = parseFilesFromDiff(diff);
-    for (const f of files) {
-      const full = path.join(root, f.path);
-      await fs.writeFile(full, f.content, 'utf8');
+    for (const fp of patches) {
+      const ok = await applyFilePatch(ws, fp, resp.project_root);
+      if (!ok) return false;
     }
     return true;
-  } catch {
+  } catch (e: any) {
+    vscode.window.showErrorMessage(`Patch apply failed: ${e?.message ?? e}`);
     return false;
   }
 }
 
-function parseFilesFromDiff(_diff: string): { path: string, content: string }[] {
-  // Placeholder (intentionally minimal); replace with real parser if you skip git.
-  throw new Error('Naive parser not implemented');
+async function applyFilePatch(workspaceRoot: string, fp: FilePatch, projectRoot?: string): Promise<boolean> {
+  const targetAbs = (() => {
+    if (projectRoot) {
+      const rel = path.relative(projectRoot, fp.path);
+      return path.join(workspaceRoot, rel);
+    }
+    return path.isAbsolute(fp.path) ? fp.path : path.join(workspaceRoot, fp.path);
+  })();
+
+  let text: string;
+  try {
+    text = await fs.readFile(targetAbs, 'utf8');
+  } catch (e) {
+    throw new Error(`Cannot read file to patch: ${targetAbs}`);
+  }
+
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n';
+  const { lines, hadTrailingNewline } = splitLogicalLines(text);
+
+  let offset = 0;
+  for (const [idx, h] of fp.hunks.entries()) {
+    const sanitizedLines = h.lines.filter((ln) => {
+      const t = ln.trim();
+      const fence = t.startsWith('```'); // matches ``` and ```lang
+      return !fence;
+    });
+
+    const startIndex = Math.max(0, h.old_start - 1 + offset);
+    const oldLen = h.old_len;
+    const newLen = h.new_len;
+
+    const expectedOld = [];
+    const newSeg = [];
+    for (const raw of sanitizedLines) {
+      const l = raw.startsWith(' ') ? raw.slice(1) : raw;
+      const kind = l.startsWith('+') ? 'add' : l.startsWith('-') ? 'del' : 'ctx';
+      const body = stripMarker(l);
+      const asLine = body === ' ' ? '' : body;
+      if (kind === 'ctx') {
+        expectedOld.push(asLine);
+        newSeg.push(asLine);
+      } else if (kind === 'del') {
+        expectedOld.push(asLine);
+      } else { // add
+        newSeg.push(asLine);
+      }
+    }
+
+    if (expectedOld.length !== oldLen) {
+      throw new Error(
+        `Hunk length mismatch in ${targetAbs} at old_start=${h.old_start}. Expected old_len=${oldLen}, derived=${expectedOld.length}`
+      );
+    }
+    if (newSeg.length !== newLen) {
+      throw new Error(
+        `Hunk length mismatch in ${targetAbs} at new_start=${h.new_start}. Expected new_len=${newLen}, derived=${newSeg.length}`
+      );
+    }
+
+    lines.splice(startIndex, oldLen, ...newSeg);
+    offset += (newLen - oldLen);
+  }
+
+  let finalText = lines.join(eol);
+  if (hadTrailingNewline) finalText += eol;
+  await fs.writeFile(targetAbs, finalText, 'utf8');
+  return true;
 }
 
+function splitLogicalLines(text: string): { lines: string[]; hadTrailingNewline: boolean } {
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n';
+  const parts = text.split(eol);
+  const hadTrailingNewline = text.endsWith(eol);
+  if (hadTrailingNewline) {
+    parts.pop();
+  }
+  return { lines: parts, hadTrailingNewline };
+}
+
+function stripMarker(s: string): string {
+  if (s.startsWith('+') || s.startsWith('-')) return s.slice(1);
+  return s;
+}
