@@ -105,15 +105,18 @@ def read_json(source: str | Path | None) -> list[dict]:
     raw = sys.stdin.read() if source in (None, "-", "") else Path(source).read_text()
     return json.loads(raw)
 
-def generate_prompt_as_string(traces_path) -> str:
-    all_traces = read_json(traces_path)
-    trace = all_traces[0] 
-    prompt = build_prompt(trace)
-    return prompt
+def generate_prompt_as_string(project_path: str, test_name: str) -> str | None:
+    all_traces = read_json(project_path)
+    trace =  next((t for t in all_traces if t["nodeid"] == test_name), None)
+    if trace:
+        prompt = build_prompt(trace)
+        return prompt
+    else:
+        print(f"Error: failed to find a test matching nodeid = {test_name}")
+        return None
 
 def main(argv: list[str] = sys.argv[1:]) -> None:
     src = argv[0] if argv else None
-    #src = "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/jsonschema/auto_debug.json"
     all_traces = read_json(src)
     trace = all_traces[0] 
     prompt = build_prompt(trace)
