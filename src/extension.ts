@@ -12,20 +12,36 @@ export async function activate(ctx: vscode.ExtensionContext) {
   controller = vscode.tests.createTestController('pytestSmartDebugger.controller', 'Pytest');
   ctx.subscriptions.push(controller);
 
+  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+  status.name = "Pytest Smart Debugger";
+  status.text = "Pytest: idle";
+  status.tooltip = "Pytest Smart Debugger";
+  status.show();
+  ctx.subscriptions.push(status);
+
   controller.refreshHandler = async (_token?: vscode.CancellationToken) => {
-    controller.items.replace([]);
-    await discoverTests(controller);
+    status.text = "Pytest: Loading tests…";
+    try {
+      controller.items.replace([]);
+      await discoverTests(controller);
+      status.text = "Pytest: Ready";
+    } catch (e) {
+      status.text = "Pytest: Error";
+      vscode.window.showErrorMessage("Failed to load tests");
+    }
   };
 
   controller.createRunProfile(
     'Run',
     vscode.TestRunProfileKind.Run,
     async (request, token) => {
+      status.text = "Pytest: running tests...";
       const run = controller.createTestRun(request);
       try {
         await runPytest(controller, run, request, token);
       } finally {
         run.end();
+        status.text = "Pytest: tests are ready"; 
       }
     },
     true
@@ -48,7 +64,19 @@ export async function activate(ctx: vscode.ExtensionContext) {
         failure
       };
 
-      const reply = await ensureServerAndRequest(payload);
+      const reply = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Proposing a patch…",
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ message: "Contacting local server…" });
+          const r = await ensureServerAndRequest(payload);
+          progress.report({ message: "Preparing diff preview…" });
+          return r;
+        }
+      );
       console.log(`Reply : ${JSON.stringify(reply, null, 2)}`);
       if (!reply) return;
 
@@ -85,27 +113,33 @@ export async function activate(ctx: vscode.ExtensionContext) {
     })
   );
 
-  controller.items.replace([]);
-  await discoverTests(controller);
+  status.text = "Pytest: Loading tests…";
+  try {
+    controller.items.replace([]);
+    await discoverTests(controller);
+    status.text = "Pytest: Ready";
+  } catch {
+    status.text = "Pytest: Error";
+  }
 
-  // watch for test file changes to auto-refresh
   const ws = vscode.workspace.workspaceFolders?.[0];
   if (ws) {
     const watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(ws, "**/*{test,tests}*.py")
     );
-    watcher.onDidChange(async () => {
-      controller.items.replace([]);
-      await discoverTests(controller);
-    });
-    watcher.onDidCreate(async () => {
-      controller.items.replace([]);
-      await discoverTests(controller);
-    });
-    watcher.onDidDelete(async () => {
-      controller.items.replace([]);
-      await discoverTests(controller);
-    });
+    const doRefresh = async () => {
+      status.text = "Pytest: Loading tests…";
+      try {
+        controller.items.replace([]);
+        await discoverTests(controller);
+        status.text = "Pytest: Ready";
+      } catch {
+        status.text = "Pytest: Error";
+      }
+    };
+    watcher.onDidChange(doRefresh);
+    watcher.onDidCreate(doRefresh);
+    watcher.onDidDelete(doRefresh);
     ctx.subscriptions.push(watcher);
   }
 }
