@@ -76,13 +76,9 @@ export async function runSingleTest(controller: vscode.TestController, item: vsc
   let out = ''; let err = '';
   cp.stdout.on('data', d => out += d.toString());
   cp.stderr.on('data', d => err += d.toString());
-  await new Promise((res) => cp.on('close', res));
+  const exitCode: number = await new Promise((res) => cp.on('close', (code) => res(code ?? 0)));
 
-  const combined = out + '\n' + err;
-  const escaped = item.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`(?:^|\\n)(?:FAILED|ERROR)\\s+${escaped}(?:\\b|\\s|$)`);
-  const reRev = new RegExp(`${escaped}\\s+(?:FAILED|ERROR)(?:\\b|\\s|$)`);
-  const failed = re.test(combined) || reRev.test(combined);
+  const failed = exitCode !== 0;
   if (failed) {
     const loc = new vscode.Location(item.uri!, new vscode.Position(0,0));
     const msg = new vscode.TestMessage('Test failed.\n' + extractFailureFor(item.id, out, err));
