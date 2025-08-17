@@ -1,7 +1,11 @@
-from flask import Flask, request, jsonify
-from main import get_patches
 import os
 from pathlib import Path
+from typing import List
+from flask import Flask, request, jsonify
+
+from generate_prompt import generate_prompt_as_string
+from llm_interface import run_completion
+from apply_patch import parse_unified_diff, DiffBlock
 
 app = Flask(__name__)
 
@@ -24,18 +28,12 @@ def to_jsonable(patches):
         jsonable.append(item)
     return jsonable
 
-def build_unified_diff(project_root: str, patches_json):
+def build_unified_diff(patches_json):
     """Assemble a valid unified diff for all files/hunks."""
     out = []
-    root = Path(project_root)
 
     for fp in patches_json:
         abs_path = Path(fp["path"])
-        try:
-            rel = abs_path.relative_to(root)
-        except ValueError:
-            # If given path isn't under project_root, just use basename
-            rel = abs_path
 
         aps = str(abs_path)
         a_path = f"a{aps}" if aps.startswith("/") else f"a/{aps}"
@@ -65,6 +63,17 @@ def build_unified_diff(project_root: str, patches_json):
         text += "\n"
     return text
 
+def get_patches(project_path: str, test_name: str) -> List[DiffBlock]:
+    # generate prompt
+    debug_log_path = project_path + "/auto_debug.json"
+    prompt = generate_prompt_as_string(debug_log_path, test_name)
+
+    # query LLM
+    model_response = run_completion(prompt)
+
+    # parse patches from the response
+    return parse_unified_diff(model_response)
+
 @app.post("/debug")
 def debug():
     project_path = "/home/tymofii/develop/debugger-enhanced-code-completion/example/jsonschema"
@@ -72,7 +81,7 @@ def debug():
 
     patches = get_patches(project_path, data["testId"])
     patches_json = to_jsonable(patches)
-    unified = build_unified_diff(project_path, patches_json)
+    unified = build_unified_diff(patches_json)
 
     return jsonify({
         "project_root": project_path,
