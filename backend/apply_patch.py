@@ -39,11 +39,13 @@ def parse_unified_diff(text: str) -> List[DiffBlock]:
             i += 1
 
             change_lines: List[str] = []
-            while i < len(lines) and not lines[i].startswith(('@@', '--- ')):
+            while i < len(lines) and not lines[i].startswith(('@@', '--- ')) and not lines[i] == "```":
                 change_lines.append(lines[i])
+                print(f"Adding line: {lines[i]}")
                 i += 1
 
             hunks.append((a, b, c, d, change_lines))
+            print("added :", change_lines)
 
         blocks.append((file_path, hunks))
 

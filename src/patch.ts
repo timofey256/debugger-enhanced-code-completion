@@ -50,10 +50,14 @@ async function applyFilePatch(workspaceRoot: string, fp: FilePatch, projectRoot?
 
   let offset = 0;
   for (const [idx, h] of fp.hunks.entries()) {
+    let fenceCount = 0;
     const sanitizedLines = h.lines.filter((ln) => {
       const t = ln.trim();
-      const fence = t.startsWith('```'); // matches ``` and ```lang
-      return !fence;
+      if (t.startsWith("```")) {
+        fenceCount++;
+        return false;
+      }
+      return fenceCount < 2;
     });
 
     const startIndex = Math.max(0, h.old_start - 1 + offset);
