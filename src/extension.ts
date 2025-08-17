@@ -3,7 +3,8 @@ import { discoverTests } from './testDiscovery';
 import { runPytest, runSingleTest } from './pytestRunner';
 import { ensureServerAndRequest } from './server';
 import { showDiffWebview } from './diffWebview';
-import { applyUnifiedDiff } from './patch';
+import { applyPatchesFromResponse } from './patch';
+import { buildUnifiedDiff, PatchResponse } from './patchFormat';
 
 let controller: vscode.TestController;
 
@@ -11,20 +12,17 @@ export async function activate(ctx: vscode.ExtensionContext) {
   controller = vscode.tests.createTestController('pytestSmartDebugger.controller', 'Pytest');
   ctx.subscriptions.push(controller);
 
-  // Test discovery
-  controller.refreshHandler = async () => {
+  controller.refreshHandler = async (_token?: vscode.CancellationToken) => {
     controller.items.replace([]);
     await discoverTests(controller);
   };
 
-  // Run profile
   controller.createRunProfile(
     'Run',
     vscode.TestRunProfileKind.Run,
     async (request, token) => {
       const run = controller.createTestRun(request);
       try {
-        console.log("Starting the pytest runner...");
         await runPytest(controller, run, request, token);
       } finally {
         run.end();
@@ -33,7 +31,6 @@ export async function activate(ctx: vscode.ExtensionContext) {
     true
   );
 
-  // Commands
   ctx.subscriptions.push(
     vscode.commands.registerCommand('pytestSmartDebugger.runAll', async () => {
       await vscode.commands.executeCommand('testing.runAll');
@@ -44,7 +41,6 @@ export async function activate(ctx: vscode.ExtensionContext) {
       const workspace = vscode.workspace.workspaceFolders?.[0];
       if (!workspace) { return; }
 
-      // Gather failure context (stdout/stderr) from last run if available
       const failure = item.error ?? 'No failure details found.';
       const payload = {
         testId: item.id,
@@ -52,34 +48,70 @@ export async function activate(ctx: vscode.ExtensionContext) {
         failure
       };
 
-      const diff = await ensureServerAndRequest(payload);
-      if (!diff || !diff.trim().startsWith('diff')) {
+      const reply = await ensureServerAndRequest(payload);
+      console.log(`Reply : ${JSON.stringify(reply, null, 2)}`);
+      if (!reply) return;
+
+      let unifiedDiff: string | undefined;
+      let structured: PatchResponse | undefined;
+      
+      if (reply.kind === 'diff') {
+        unifiedDiff = reply.diff;
+      } else if (reply.kind === 'both') {
+        structured = reply.data;
+        const root = structured.project_root;
+        const patches = structured.patches ?? [];
+        unifiedDiff = buildUnifiedDiff(root, patches);
+      }
+
+      if (!unifiedDiff || !unifiedDiff.trim().startsWith('diff')) {
         vscode.window.showWarningMessage('No diff produced by server.');
         return;
       }
-      await showDiffWebview(ctx, diff, async () => {
-        const applied = await applyUnifiedDiff(diff);
+
+      await showDiffWebview(ctx, unifiedDiff, async () => {
+        if (!structured || !structured.patches?.length) {
+          vscode.window.showErrorMessage('No structured patches available from server to apply.');
+          return false;
+        }
+        const applied = await applyPatchesFromResponse(structured);
         if (!applied) {
           vscode.window.showErrorMessage('Failed to apply patch.');
           return false;
         }
-        // Rerun just this test
         await runSingleTest(controller, item);
         return true;
       });
     })
   );
 
-  // Initial discovery
-  const cts = new vscode.CancellationTokenSource();
-  try {
-    await controller.refreshHandler?.(cts.token);
-  } finally {
-    cts.dispose();
+  controller.items.replace([]);
+  await discoverTests(controller);
+
+  // watch for test file changes to auto-refresh
+  const ws = vscode.workspace.workspaceFolders?.[0];
+  if (ws) {
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(ws, "**/*{test,tests}*.py")
+    );
+    watcher.onDidChange(async () => {
+      controller.items.replace([]);
+      await discoverTests(controller);
+    });
+    watcher.onDidCreate(async () => {
+      controller.items.replace([]);
+      await discoverTests(controller);
+    });
+    watcher.onDidDelete(async () => {
+      controller.items.replace([]);
+      await discoverTests(controller);
+    });
+    ctx.subscriptions.push(watcher);
   }
 }
 
 export function deactivate() {}
+
 async function pickFailedTest(controller: vscode.TestController) {
   const failed: vscode.TestItem[] = [];
   controller.items.forEach(item => collectFailed(item, failed));
