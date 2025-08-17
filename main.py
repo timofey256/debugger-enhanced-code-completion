@@ -32,13 +32,6 @@ def run_pytest_as_subprocess(project_path: str):
     return result.stdout
 
 def get_patches(project_path: str, test_name: str) -> List[DiffBlock]:
-    # collect report of tests. this needs conftest.py inside the *tested* project root.
-   # try:
-   #     run_pytest_as_subprocess(project_path) # generates auto_debug.json which we will pick up next
-   # except Exception as e:
-   #     print(f"Some failures occured. Error message: \n{e}\n\n")
-   #     print("This can mean either failed tests, or failed debugging process, so no exiting")
-
     # generate prompt
     debug_log_path = project_path + "/auto_debug.json"
     prompt = generate_prompt_as_string(debug_log_path, test_name)
