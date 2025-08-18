@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { spawn } from 'child_process';
-import * as path from 'path';
+
+type FailuresMap = Map<string, string>;
 
 export async function runPytest(
   controller: vscode.TestController,
@@ -28,7 +29,9 @@ export async function runPytest(
   cp.stdout.on('data', d => out += d.toString());
   cp.stderr.on('data', d => err += d.toString());
 
-  await new Promise((res) => cp.on('close', res));
+  const full = out + '\n' + err;
+  const failures = parseFailuresSection(full);          
+  const summaryFailed = parseSummaryFailedNodeids(full);
   console.log("Finished pytest run. Analysing...");
   console.log(`Result out: ${out}`);
   console.log(`Result err: ${err}`);
@@ -37,22 +40,28 @@ export async function runPytest(
     if (out.includes(item.id) && /FAILED/.test(out)) { /* coarse */ }
   }
 
-  const combined = out + '\n' + err;
-  const failedIn = (nodeid: string) => {
-    const escaped = nodeid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`(?:^|\\n)(?:FAILED|ERROR)\\s+${escaped}(?:\\b|\\s|$)`);
-    const reRev = new RegExp(`${escaped}\\s+(?:FAILED|ERROR)(?:\\b|\\s|$)`);
-    return re.test(combined) || reRev.test(combined);
-  };
-
   for (const item of targets) {
     run.started(item);
-    const failed = failedIn(item.id);
+    const headerKey = nodeidToFailuresHeader(item.id);
+    const block = headerKey ? failures.get(headerKey) : undefined;
+    let failed = false;
+    let message: string | undefined = undefined;
+
+    if (block) {
+      failed = true;
+      message = block.trim();
+    } else if (summaryFailed.has(item.id)) {
+      failed = true;
+      message = 'Test failed (see output).';
+    } else {
+      failed = false;
+    }
+
     if (failed) {
-      const loc = new vscode.Location(item.uri!, new vscode.Position(0,0));
-      const msg = new vscode.TestMessage('Test failed.\n' + extractFailureFor(item.id, out, err));
-      msg.location = loc;
-      run.failed(item, msg);
+      const loc = bestFailureLocation(block, item);
+      const msgObj = new vscode.TestMessage(message ?? 'Test failed.');
+      if (loc) msgObj.location = loc;
+      run.failed(item, msgObj);
       (item as any).lastRunState = 'failed';
     } else {
       run.passed(item, 1);
@@ -107,3 +116,95 @@ function extractFailureFor(id: string, out: string, err: string) {
   if (idx < 0) return text.slice(-2000);
   return text.slice(idx, idx + 4000);
 }
+
+
+/**
+ * Convert a pytest nodeid into a FAILURES header key.
+ * Examples:
+ *  - "path/to/test_cli.py::TestCLIIntegration::test_license" -> "TestCLIIntegration.test_license"
+ *  - "path/to/test_mod.py::test_standalone" -> "test_standalone"
+ *  - Parametrized: keep the bracket suffix, e.g. "test_foo[param]" -> "test_foo[param]"
+ */
+function nodeidToFailuresHeader(nodeid: string): string | undefined {
+  const parts = nodeid.split('::');
+  if (parts.length === 0) return undefined;
+  if (parts.length === 1) {
+    return undefined;
+  }
+  if (parts.length >= 3) {
+    const cls = parts[parts.length - 2];
+    const test = parts[parts.length - 1];
+    return `${cls}.${test}`;
+  }
+  return parts[parts.length - 1];
+}
+
+/**
+ * Parse the FAILURES section emitted by pytest and return a map:
+ *   header ("Class.test" or "test_function") -> full traceback block
+ *
+ * We look for:
+ *   ^={10,} FAILURES ={10,}$       (section start)
+ *   ^_{10,}\s+(.*?)\s+_{10,}$      (per-failure header with name we key by)
+ * and capture text until the next header or the next big ==== SECTION ==== line.
+ */
+function parseFailuresSection(text: string): FailuresMap {
+  const map: FailuresMap = new Map();
+  const lines = text.split(/\r?\n/);
+
+  // start of FAILURES section
+  const isEqHeader = (s: string) => /^=+\s*[A-Z ]+\s*=+$/.test(s);
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^=+\s*FAILURES\s*=+$/.test(lines[i])) { start = i + 1; break; }
+  }
+  if (start === -1) return map; // no failures section found
+
+  // find end of FAILURES section: next ========== SECTION ========== or EOF
+  let end = lines.length;
+  for (let i = start; i < lines.length; i++) {
+    if (isEqHeader(lines[i]) && !/^=+\s*FAILURES\s*=+$/.test(lines[i])) {
+      end = i; break;
+    }
+  }
+
+  const headerRegex = /^_{5,}\s+(.*?)\s+_{5,}$/; // "_____ <name> _____"
+  let i = start;
+  while (i < end) {
+    const headerLine = lines[i];
+    const m = headerRegex.exec(headerLine);
+    if (!m) { i++; continue; }
+    const headerName = (m[1] || '').trim();
+    const blockStart = i + 1;
+    let j = blockStart;
+    while (j < end && !headerRegex.test(lines[j])) j++;
+    const block = lines.slice(blockStart, j).join('\n');
+    if (headerName) {
+      map.set(headerName, block);
+    }
+    i = j;
+  }
+  return map;
+}
+
+function parseSummaryFailedNodeids(text: string): Set<string> {
+  const set = new Set<string>();
+  const re = /^(FAILED|ERROR)\s+(\S+?)(\s+-\s+.*)?$/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const nodeid = m[2];
+    if (nodeid) set.add(nodeid);
+  }
+  return set;
+}
+
+function bestFailureLocation(block: string | undefined, item: vscode.TestItem): vscode.Location | undefined {
+  if (!block || !item.uri) return undefined;
+  const m = /([^\s:]+\.py):(\d+):/.exec(block);
+  if (m) {
+    const line = Math.max(0, parseInt(m[2], 10) - 1);
+    return new vscode.Location(item.uri, new vscode.Position(line, 0));
+  }
+  return new vscode.Location(item.uri, new vscode.Position(0, 0));
+}
+
