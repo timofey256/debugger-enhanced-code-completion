@@ -29,7 +29,6 @@ export async function runPytest(
   cp.stdout.on('data', d => out += d.toString());
   cp.stderr.on('data', d => err += d.toString());
 
-  const exitCode: number = await new Promise((res) => cp.on('close', (code) => res(code ?? 0)));
   const full = out + '\n' + err;
   const failures = parseFailuresSection(full);          
   const summaryFailed = parseSummaryFailedNodeids(full);
