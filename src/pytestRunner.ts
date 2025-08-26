@@ -26,12 +26,27 @@ export async function runPytest(
   const args = isRunAll ? [...extra] : [...extra, ...nodeids];
   const cp = spawn(pytest, args, { cwd, shell: true });
   let out = ''; let err = '';
-  cp.stdout.on('data', d => out += d.toString());
-  cp.stderr.on('data', d => err += d.toString());
+
+  cp.stdout.on('data', d => {
+    const chunk = d.toString();
+    out += chunk;
+    console.log("STDOUT chunk:", chunk);
+  });
+  cp.stderr.on('data', d => {
+    const chunk = d.toString();
+    err += chunk;
+    console.log("STDERR chunk:", chunk);
+  });
+
+  // wait until pytest process closes before analyzing
+  await new Promise<void>(resolve => {
+    cp.on('close', () => resolve());
+  });
 
   const full = out + '\n' + err;
-  const failures = parseFailuresSection(full);          
+  const failures = parseFailuresSection(full);
   const summaryFailed = parseSummaryFailedNodeids(full);
+
   console.log("Finished pytest run. Analysing...");
   console.log(`Result out: ${out}`);
   console.log(`Result err: ${err}`);
@@ -43,18 +58,25 @@ export async function runPytest(
   for (const item of targets) {
     run.started(item);
     const headerKey = nodeidToFailuresHeader(item.id);
-    const block = headerKey ? failures.get(headerKey) : undefined;
+    let block = headerKey ? failures.get(headerKey) : undefined;
     let failed = false;
     let message: string | undefined = undefined;
 
-    if (block) {
+    // summary is the ground truth
+    if (summaryFailed.has(item.id)) {
       failed = true;
-      message = block.trim();
-    } else if (summaryFailed.has(item.id)) {
-      failed = true;
-      message = 'Test failed (see output).';
-    } else {
-      failed = false;
+      message = block ? block.trim() : 'Test failed (see output).';
+    }
+
+    // fallback: regex search if neither summary nor failures matched
+    if (!failed) {
+      const escaped = item.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`(?:^|\\n)(?:FAILED|ERROR)\\s+${escaped}(?:\\b|\\s|$)`);
+      const reRev = new RegExp(`${escaped}\\s+(?:FAILED|ERROR)(?:\\b|\\s|$)`);
+      if (re.test(full) || reRev.test(full)) {
+        failed = true;
+        message = block ?? extractFailureFor(item.id, out, err);
+      }
     }
 
     if (failed) {
@@ -128,15 +150,12 @@ function extractFailureFor(id: string, out: string, err: string) {
 function nodeidToFailuresHeader(nodeid: string): string | undefined {
   const parts = nodeid.split('::');
   if (parts.length === 0) return undefined;
-  if (parts.length === 1) {
-    return undefined;
-  }
   if (parts.length >= 3) {
     const cls = parts[parts.length - 2];
     const test = parts[parts.length - 1];
     return `${cls}.${test}`;
   }
-  return parts[parts.length - 1];
+  return parts[parts.length - 1]; // also works for functions
 }
 
 /**
