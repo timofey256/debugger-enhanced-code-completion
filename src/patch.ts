@@ -81,17 +81,6 @@ async function applyFilePatch(workspaceRoot: string, fp: FilePatch, projectRoot?
       }
     }
 
-    if (expectedOld.length !== oldLen) {
-      throw new Error(
-        `Hunk length mismatch in ${targetAbs} at old_start=${h.old_start}. Expected old_len=${oldLen}, derived=${expectedOld.length}`
-      );
-    }
-    if (newSeg.length !== newLen) {
-      throw new Error(
-        `Hunk length mismatch in ${targetAbs} at new_start=${h.new_start}. Expected new_len=${newLen}, derived=${newSeg.length}`
-      );
-    }
-
     lines.splice(startIndex, oldLen, ...newSeg);
     offset += (newLen - oldLen);
   }

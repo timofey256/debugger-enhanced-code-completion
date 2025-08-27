@@ -85,9 +85,11 @@ export async function runPytest(
       if (loc) msgObj.location = loc;
       run.failed(item, msgObj);
       (item as any).lastRunState = 'failed';
+      (item as any).lastFailureMessage = msgObj.message;
     } else {
       run.passed(item, 1);
       (item as any).lastRunState = 'passed';
+      (item as any).lastFailureMessage = undefined;
     }
   }
 }
