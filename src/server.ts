@@ -17,8 +17,7 @@ export async function ensureServerAndRequest(payload: any): Promise<ServerReply 
   // Probe
   const alive = await isAlive(port);
   if (!alive && auto) {
-    await startServer();
-    await new Promise(r => setTimeout(r, 800));
+      console.log(`Server is not alive on port ${port}`);
   }
   const ok = await isAlive(port);
   if (!ok) {

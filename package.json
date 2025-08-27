@@ -21,9 +21,9 @@
       "properties": {
         "pytestSmartDebugger.pythonPath": { "type": "string", "default": "python", "description": "Python executable" },
         "pytestSmartDebugger.pytestPath":  { "type": "string", "default": "pytest", "description": "Pytest executable" },
-        "pytestSmartDebugger.pytestArgs":  { "type": "array",  "items": { "type":"string" }, "default": ["-q", "-s", "-rA"], "description": "Extra pytest args" },
+        "pytestSmartDebugger.pytestArgs":  { "type": "array",  "items": { "type":"string" }, "default": ["-q", "-s"], "description": "Extra pytest args" },
         "pytestSmartDebugger.serverCommand": { "type": "string", "default": "${workspaceFolder}/python/server.py", "description": "Path to local debug server" },
-        "pytestSmartDebugger.serverPort":   { "type": "number", "default": 5123, "description": "Local server port" },
+        "pytestSmartDebugger.serverPort":   { "type": "number", "default": 5000, "description": "Local server port" },
         "pytestSmartDebugger.autoStartServer": { "type": "boolean", "default": true, "description": "Start server automatically when needed" },
         "pytestSmartDebugger.useGitApply": { "type": "boolean", "default": true, "description": "Use `git apply` to apply unified diffs" }
       }
