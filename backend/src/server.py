@@ -69,7 +69,11 @@ def build_unified_diff(patches_json):
 def get_patches(project_path: str, test_name: str) -> List[DiffBlock]:
     # generate prompt
     debug_log_path = project_path + "/auto_debug.json"
+    print(f"project_path: {debug_log_path}")
     prompt = generate_prompt_as_string(debug_log_path, test_name)
+    print("===== PROMPT START =====")
+    print(prompt)
+    print("===== PROMPT END =====")
 
     # query LLM
     model_response = run_completion(prompt)
@@ -89,7 +93,7 @@ def debug():
     unified = build_unified_diff(patches_json)
 
     return jsonify({
-        "project_root": project_path,
+        "project_root": PROJECT_PATH,
         "patches": patches_json,
         "unified_diff": unified
     }), 200
@@ -98,11 +102,9 @@ def debug():
 def health():
     return "ok", 200
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python server.py <project_path> [port]")
-        sys.exit(1)
-
-    PROJECT_PATH = sys.argv[1]
-    port = int(os.environ.get("PORT", "5123"))
+def main():
+    port = int(os.environ.get("PORT", "5000"))
     app.run("127.0.0.1", port, debug=False)
+
+if __name__ == "__main__":
+    main()

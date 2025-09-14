@@ -41,6 +41,8 @@ pkgs.mkShell {
     python313Packages.six
     python313Packages.typing-extensions
     python313Packages.jsonpickle
+    python313Packages.build
+    python313Packages.twine
 
     python313Packages.flask # for http backend
 
