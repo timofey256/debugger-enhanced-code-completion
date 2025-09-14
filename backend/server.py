@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from typing import List
 from flask import Flask, request, jsonify
@@ -6,6 +7,8 @@ from flask import Flask, request, jsonify
 from generate_prompt import generate_prompt_as_string
 from llm_interface import run_completion
 from apply_patch import parse_unified_diff, DiffBlock
+
+PROJECT_PATH: str | None = None
 
 app = Flask(__name__)
 
@@ -76,10 +79,12 @@ def get_patches(project_path: str, test_name: str) -> List[DiffBlock]:
 
 @app.post("/debug")
 def debug():
-    project_path = "/home/tymofii/develop/debugger-enhanced-code-completion/example/jsonschema"
     data = request.get_json(force=True)
 
-    patches = get_patches(project_path, data["testId"])
+    if PROJECT_PATH is None:
+        return jsonify({"error": "Server not configured with project path"}), 500
+
+    patches = get_patches(PROJECT_PATH, data["testId"])
     patches_json = to_jsonable(patches)
     unified = build_unified_diff(patches_json)
 
@@ -94,6 +99,10 @@ def health():
     return "ok", 200
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python server.py <project_path> [port]")
+        sys.exit(1)
+
+    PROJECT_PATH = sys.argv[1]
     port = int(os.environ.get("PORT", "5123"))
     app.run("127.0.0.1", port, debug=False)
-

@@ -22,7 +22,7 @@ Flow from the user perspective:
 3. Debug data is processed and combined with code context. Combined context is sent to LLM for code completion
 4. Generated code is returned and presented to the user. User can accept, modify, or request refinements
 
-![Logic diagram](images/diagram.png "Logic diagram")
+![Logic diagram](assets/diagram.png "Logic diagram")
 
 ### Similar tools
 
