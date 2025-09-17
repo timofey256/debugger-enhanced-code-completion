@@ -105,11 +105,12 @@ def health():
 def main():
     global PROJECT_PATH
 
-    print(">>> server starting <<<", flush=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s"
     )
+
+    logging.info("Server starting...")
 
     if len(sys.argv) < 2:
         print("Usage: python server.py <project_path> [port]")
