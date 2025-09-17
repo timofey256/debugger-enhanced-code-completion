@@ -45,8 +45,6 @@ pkgs.mkShell {
     pyPkgs.twine
     pyPkgs.flask
 
-    (import ./backend/default.nix { inherit pkgs; })
-
     ruff
 
     # Pyright language server/CLI (Node-based)

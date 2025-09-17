@@ -1,9 +1,9 @@
 [project]
-name = "pytest-smart-debugger-server"
-version = "0.0.2"
+name = "pytest-smart-debugger-backend"
+version = "0.0.3"
 description = "Backend server for Pytest Smart Debugger"
 authors = [{ name = "Tymofii Shchetilin" }]
-dependencies = []
+dependencies = [ "flask", "requests"  ]
 requires-python = ">=3.8"
 
 [project.scripts]
