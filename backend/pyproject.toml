@@ -1,0 +1,14 @@
+[project]
+name = "pytest-smart-debugger-server"
+version = "0.0.2"
+description = "Backend server for Pytest Smart Debugger"
+authors = [{ name = "Tymofii Shchetilin" }]
+dependencies = []
+requires-python = ">=3.8"
+
+[project.scripts]
+pytest-smart-debugger-server = "pytest_smart_debugger_server.server:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
