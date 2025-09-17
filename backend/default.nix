@@ -1,18 +1,19 @@
-# shell.nix
 { pkgs ? import <nixpkgs> {} }:
 
 let
   python = pkgs.python313;
   pyPkgs = python.pkgs;
 in
-pkgs.mkShell {
-  name = "python-dev-tools";
+pyPkgs.buildPythonPackage {
+  pname = "pytest-smart-debugger-backend";
+  version = "0.0.3";
+  src = pkgs.lib.cleanSource ./.;
 
-  packages = with pkgs; [
-    python313 
+  format = "pyproject";
 
-    # Python packages
-    pyPkgs.pip
+  propagatedBuildInputs = [
+    pyPkgs.setuptools
+    pyPkgs.wheel
     pyPkgs.black
     pyPkgs.flake8
     pyPkgs.isort
@@ -43,14 +44,9 @@ pkgs.mkShell {
     pyPkgs.jsonpickle
     pyPkgs.build
     pyPkgs.twine
-    pyPkgs.flask
 
-    ruff
-
-    # Pyright language server/CLI (Node-based)
-    nodejs_20
-    pyright
-
-    vscode
+    pyPkgs.flask # for http backend
   ];
+
+  doCheck = false;
 }

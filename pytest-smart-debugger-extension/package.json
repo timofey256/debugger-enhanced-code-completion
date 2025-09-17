@@ -1,7 +1,7 @@
 {
   "name": "pytest-smart-debugger",
   "displayName": "Pytest Smart Debugger",
-  "publisher": "you",
+  "publisher": "tymofii-shchetilin",
   "version": "0.0.1",
   "engines": { "vscode": "^1.92.0" },
   "activationEvents": [
@@ -12,9 +12,10 @@
   ],
   "contributes": {
     "commands": [
-      { "command": "pytestSmartDebugger.runAll", "title": "Pytest: Run All Tests" },
-      { "command": "pytestSmartDebugger.tryDebug", "title": "Pytest: Try to Debug Failed Test" },
-      { "command": "pytestSmartDebugger.applyPatch", "title": "Pytest: Apply Suggested Patch" }
+      { "command": "pytestSmartDebugger.runAll",     "title": "Pytest: Run All Tests" },
+      { "command": "pytestSmartDebugger.tryDebug",   "title": "Pytest: Try to Debug Failed Test" },
+      { "command": "pytestSmartDebugger.applyPatch", "title": "Pytest: Apply Suggested Patch" },
+      { "command": "extension.startServer",          "title": "Pytest: Start Backend Server" }
     ],
     "configuration": {
       "title": "Pytest Smart Debugger",
@@ -23,7 +24,7 @@
         "pytestSmartDebugger.pytestPath":  { "type": "string", "default": "pytest", "description": "Pytest executable" },
         "pytestSmartDebugger.pytestArgs":  { "type": "array",  "items": { "type":"string" }, "default": ["-q", "-s"], "description": "Extra pytest args" },
         "pytestSmartDebugger.serverCommand": { "type": "string", "default": "${workspaceFolder}/python/server.py", "description": "Path to local debug server" },
-        "pytestSmartDebugger.serverPort":   { "type": "number", "default": 5000, "description": "Local server port" },
+        "pytestSmartDebugger.serverPort":   { "type": "number", "default": 5123, "description": "Local server port" },
         "pytestSmartDebugger.autoStartServer": { "type": "boolean", "default": true, "description": "Start server automatically when needed" },
         "pytestSmartDebugger.useGitApply": { "type": "boolean", "default": true, "description": "Use `git apply` to apply unified diffs" }
       }
@@ -36,7 +37,9 @@
   "scripts": {
     "vscode:prepublish": "tsc -p ./",
     "compile": "tsc -p ./",
-    "watch": "tsc -w -p ./"
+    "watch": "tsc -w -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",

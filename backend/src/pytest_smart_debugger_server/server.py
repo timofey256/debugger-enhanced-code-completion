@@ -1,13 +1,18 @@
 import os
+import sys
 from pathlib import Path
 from typing import List
 from flask import Flask, request, jsonify
+import logging
 
-from generate_prompt import generate_prompt_as_string
-from llm_interface import run_completion
-from apply_patch import parse_unified_diff, DiffBlock
+from .generate_prompt import generate_prompt_as_string
+from .llm_interface import run_completion
+from .apply_patch import parse_unified_diff, DiffBlock
+
+PROJECT_PATH: str | None = None
 
 app = Flask(__name__)
+logger = logging.getLogger(__name__)
 
 def to_jsonable(patches):
     """Convert your tuple/Path-based patches to plain JSON."""
@@ -67,24 +72,28 @@ def get_patches(project_path: str, test_name: str) -> List[DiffBlock]:
     # generate prompt
     debug_log_path = project_path + "/auto_debug.json"
     prompt = generate_prompt_as_string(debug_log_path, test_name)
+    logger.info("Generated prompt:\n%s", prompt)
 
     # query LLM
     model_response = run_completion(prompt)
+    logger.info("Model response:\n%s", model_response)
 
     # parse patches from the response
     return parse_unified_diff(model_response)
 
 @app.post("/debug")
 def debug():
-    project_path = "/home/tymofii/develop/debugger-enhanced-code-completion/example/jsonschema"
     data = request.get_json(force=True)
 
-    patches = get_patches(project_path, data["testId"])
+    if PROJECT_PATH is None:
+        return jsonify({"error": "Server not configured with project path"}), 500
+
+    patches = get_patches(PROJECT_PATH, data["testId"])
     patches_json = to_jsonable(patches)
     unified = build_unified_diff(patches_json)
 
     return jsonify({
-        "project_root": project_path,
+        "project_root": PROJECT_PATH,
         "patches": patches_json,
         "unified_diff": unified
     }), 200
@@ -93,7 +102,23 @@ def debug():
 def health():
     return "ok", 200
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "5123"))
+def main():
+    global PROJECT_PATH
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s"
+    )
+
+    logging.info("Server starting...")
+
+    if len(sys.argv) < 2:
+        print("Usage: python server.py <project_path> [port]")
+        sys.exit(1)
+
+    PROJECT_PATH = sys.argv[1]
+    port = int(os.environ.get("PORT", "5000"))
     app.run("127.0.0.1", port, debug=False)
 
+if __name__ == "__main__":
+    main()
