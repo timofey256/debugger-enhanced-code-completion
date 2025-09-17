@@ -5,7 +5,7 @@ from typing import Dict, List, Any
 import json
 import time
 
-from llm_interface import LLMInterface
+from .llm_interface import LLMInterface
 
 class CompletionModelBuilder:
     """

@@ -1,7 +1,7 @@
 {
   "name": "pytest-smart-debugger",
   "displayName": "Pytest Smart Debugger",
-  "publisher": "you",
+  "publisher": "tymofii-shchetilin",
   "version": "0.0.1",
   "engines": { "vscode": "^1.92.0" },
   "activationEvents": [
@@ -12,9 +12,10 @@
   ],
   "contributes": {
     "commands": [
-      { "command": "pytestSmartDebugger.runAll", "title": "Pytest: Run All Tests" },
-      { "command": "pytestSmartDebugger.tryDebug", "title": "Pytest: Try to Debug Failed Test" },
-      { "command": "pytestSmartDebugger.applyPatch", "title": "Pytest: Apply Suggested Patch" }
+      { "command": "pytestSmartDebugger.runAll",     "title": "Pytest: Run All Tests" },
+      { "command": "pytestSmartDebugger.tryDebug",   "title": "Pytest: Try to Debug Failed Test" },
+      { "command": "pytestSmartDebugger.applyPatch", "title": "Pytest: Apply Suggested Patch" },
+      { "command": "extension.startServer",          "title": "Pytest: Start Backend Server" }
     ],
     "configuration": {
       "title": "Pytest Smart Debugger",
@@ -36,7 +37,9 @@
   "scripts": {
     "vscode:prepublish": "tsc -p ./",
     "compile": "tsc -p ./",
-    "watch": "tsc -w -p ./"
+    "watch": "tsc -w -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",

@@ -12,25 +12,33 @@ let controller: vscode.TestController;
 let serverProcess: ReturnType<typeof spawn> | undefined;
 
 export async function activate(ctx: vscode.ExtensionContext) {
-// Leaving this here - perhaps we will be starting the server automathically
-//
-//  console.log(`extensionPath = ${ctx.extensionPath}`);
-//  const serverScript = path.join(ctx.extensionPath, 'backend', 'server.py');
-//  serverProcess = spawn('python', [serverScript], {
-//        cwd: path.dirname(serverScript),
-//        env: { ...process.env, PORT: '5000' } // example: pass environment vars
-//  });
-//  serverProcess.stdout?.on('data', data => {
-//      console.log(`Server: ${data}`);
-//  });
-//  
-//  serverProcess.stderr?.on('data', data => {
-//      console.error(`Server error: ${data}`);
-//  });
-//  
-//  serverProcess.on('close', code => {
-//      console.log(`Server exited with code ${code}`);
-//  });
+  // --- Start the backend ---
+  const disposable = vscode.commands.registerCommand('extension.startServer', () => {
+      const ws = vscode.workspace.workspaceFolders?.[0];
+      if (!ws) {
+          vscode.window.showErrorMessage("No workspace folder open — cannot start backend.");
+          return;
+      }
+
+      serverProcess = spawn('pytest-smart-debugger-server', [ws.uri.fsPath], {
+          stdio: 'pipe',
+          shell: true
+      });
+
+      serverProcess.stdout?.on('data', (data) => {
+          vscode.window.showInformationMessage(`Server: ${data}`);
+      });
+
+      serverProcess.stderr?.on('data', (data) => {
+          vscode.window.showErrorMessage(`Server error: ${data}`);
+      });
+
+      serverProcess.on('close', (code) => {
+          vscode.window.showInformationMessage(`Server stopped with code ${code}`);
+      });
+  });
+
+  ctx.subscriptions.push(disposable);
 
   // --- Define all the commands ---
   controller = vscode.tests.createTestController('pytestSmartDebugger.controller', 'Pytest');
@@ -171,9 +179,7 @@ export async function activate(ctx: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-    if (serverProcess) {
-        serverProcess.kill();
-    }
+    serverProcess?.kill();
 }
 
 async function pickFailedTest(controller: vscode.TestController) {
