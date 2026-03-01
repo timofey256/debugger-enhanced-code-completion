@@ -1,0 +1,10 @@
+[
+  {
+    "success": true,
+    "instance_id": "django__django-11583",
+    "framework": "unittest",
+    "trace_path": "traces_test/django__django-11583/auto_debug.json",
+    "num_failures": 2,
+    "runtime": 8.189240217208862
+  }
+]
