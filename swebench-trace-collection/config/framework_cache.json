@@ -1,0 +1,4 @@
+{
+  "_comment": "Pre-computed framework detection results for SWE-bench instances",
+  "_format": "instance_id -> framework (pytest|unittest|django|custom)"
+}

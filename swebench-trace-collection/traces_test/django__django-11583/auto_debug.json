@@ -1,0 +1,60 @@
+[
+  {
+    "nodeid": "test_path_with_embedded_null_bytes (utils_tests.test_autoreload.TestIterModulesAndFiles) (path='embedded_null_byte\\x00.py')",
+    "exc_type": "ValueError",
+    "message": "embedded null byte",
+    "frames": [
+      {
+        "file": "/testbed/tests/utils_tests/test_autoreload.py",
+        "line": 150,
+        "func": "test_path_with_embedded_null_bytes",
+        "locals": {
+          "path": "'di\\x00rectory/embedded_null_byte.py'",
+          "self": "<utils_tests.test_autoreload.TestIterModulesAndFiles testMethod=test_path_with_embedded_null_bytes>"
+        }
+      },
+      {
+        "file": "/testbed/django/utils/autoreload.py",
+        "line": 141,
+        "func": "iter_modules_and_files",
+        "locals": {
+          "path": "PosixPath('embedded_null_byte\\x00.py')",
+          "filename": "'embedded_null_byte\\x00.py'",
+          "results": "set()",
+          "sys_file_paths": "[]",
+          "extra_files": "frozenset({'embedded_null_byte\\x00.py'})",
+          "modules": "()"
+        }
+      }
+    ]
+  },
+  {
+    "nodeid": "test_path_with_embedded_null_bytes (utils_tests.test_autoreload.TestIterModulesAndFiles) (path='di\\x00rectory/embedded_null_byte.py')",
+    "exc_type": "ValueError",
+    "message": "embedded null byte",
+    "frames": [
+      {
+        "file": "/testbed/tests/utils_tests/test_autoreload.py",
+        "line": 150,
+        "func": "test_path_with_embedded_null_bytes",
+        "locals": {
+          "path": "'di\\x00rectory/embedded_null_byte.py'",
+          "self": "<utils_tests.test_autoreload.TestIterModulesAndFiles testMethod=test_path_with_embedded_null_bytes>"
+        }
+      },
+      {
+        "file": "/testbed/django/utils/autoreload.py",
+        "line": 141,
+        "func": "iter_modules_and_files",
+        "locals": {
+          "path": "PosixPath('di\\x00rectory/embedded_null_byte.py')",
+          "filename": "'di\\x00rectory/embedded_null_byte.py'",
+          "results": "set()",
+          "sys_file_paths": "[]",
+          "extra_files": "frozenset({'di\\x00rectory/embedded_null_byte.py'})",
+          "modules": "()"
+        }
+      }
+    ]
+  }
+]

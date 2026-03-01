@@ -1,0 +1,8 @@
+# Core dependencies for trace collection
+jsonpickle>=3.0.0
+
+# For loading SWE-bench dataset
+datasets>=2.0.0
+
+# For testing
+pytest>=7.0.0  # For testing the system itself (not required for trace collection)
