@@ -33,3 +33,10 @@ backend/result/
 backend/result
 evaluation_report_*.json
 model_config_*.json
+
+# Thesis
+thesis/
+references/
+
+# Other
+openspec/
