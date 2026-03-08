@@ -1,0 +1,35 @@
+# Python packaging
+*.egg-info/
+dist/
+build/
+__pycache__/
+*.pyc
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+# Node artifacts
+node_modules/
+
+# Debugger / trace outputs (repository-wide)
+auto_debug.json
+**/auto_debug.json
+**/test_output.txt
+**/summary_trace_collection.json
+
+# SWE-bench run artifacts
+swebench-trace-collection/traces*/
+swebench-trace-collection/debugger_patch_comparison*/
+swebench-trace-collection/logs/
+
+# Local experiment artifacts
+prompt_log/
+code_completion_results/
+experiment_runs/
+backend/result/
+backend/result
+evaluation_report_*.json
+model_config_*.json
