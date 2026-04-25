@@ -76,6 +76,9 @@ def inject_pytest_conftest(test_spec: TestSpec) -> TestSpec:
         # Ensure trace output directory is writable
         "chmod 777 /trace_output || true",
 
+        # Install jsonpickle for locals serialization
+        "pip install jsonpickle -q || true",
+
         # Backup existing conftest.py if present in testbed root
         "if [ -f /testbed/conftest.py ]; then",
         "    echo 'Backing up existing /testbed/conftest.py'",
@@ -124,6 +127,10 @@ def inject_unittest_setup(test_spec: TestSpec) -> TestSpec:
 
         # Ensure trace output directory is writable
         "chmod 777 /trace_output || true",
+
+        # Install jsonpickle for locals serialization
+        "pip install jsonpickle -q || true",
+
         "echo 'Trace collection setup complete (unittest via sitecustomize.py)'",
     ]
 

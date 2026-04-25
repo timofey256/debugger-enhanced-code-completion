@@ -102,6 +102,21 @@ def read_json_list(path: Path) -> List[Dict[str, Any]]:
     return data if isinstance(data, list) else []
 
 
+def _is_project_file(file_path: str) -> bool:
+    """Check if a file is project source code (not stdlib/site-packages)."""
+    if not file_path.endswith(".py"):
+        return False
+    if "site-packages" in file_path:
+        return False
+    # Reject conda/system stdlib (e.g. /opt/miniconda3/envs/testbed/lib/python3.9/...)
+    if "/lib/python" in file_path:
+        return False
+    # Reject our injected tracer conftest
+    if file_path.endswith("/conftest.py"):
+        return False
+    return True
+
+
 def collect_file_line_map(traces: List[Dict[str, Any]]) -> Dict[str, List[int]]:
     file_lines: Dict[str, List[int]] = {}
     for trace in traces:
@@ -113,11 +128,25 @@ def collect_file_line_map(traces: List[Dict[str, Any]]) -> Dict[str, List[int]]:
                 continue
             file_path = frame.get("file")
             line = frame.get("line")
-            if not isinstance(file_path, str) or not file_path.endswith(".py"):
+            if not isinstance(file_path, str) or not _is_project_file(file_path):
                 continue
             if not isinstance(line, int):
                 continue
             file_lines.setdefault(file_path, []).append(line)
+        # Also include files from execution path (functions called during test
+        # that returned successfully and thus don't appear in exception traceback)
+        exec_path = trace.get("exec_path", [])
+        if isinstance(exec_path, list):
+            for call in exec_path:
+                if not isinstance(call, dict):
+                    continue
+                file_path = call.get("file")
+                line = call.get("line")
+                if not isinstance(file_path, str) or not _is_project_file(file_path):
+                    continue
+                if not isinstance(line, int):
+                    continue
+                file_lines.setdefault(file_path, []).append(line)
     return file_lines
 
 
@@ -131,11 +160,28 @@ def select_context_files(file_line_map: Dict[str, List[int]], max_files: int) ->
     return ordered[:max_files]
 
 
+def _extract_setup_script(test_spec) -> str:
+    """Extract eval script commands up to (but not including) the test execution.
+
+    The eval script contains repo setup (git checkout, git apply for test files,
+    pip install, etc.) followed by the actual test command bracketed by
+    ``>>>>> Start Test Output``.  We replay the setup portion so that test files
+    created by ``git apply`` are available for reading.
+    """
+    setup_lines: List[str] = ["#!/bin/bash", "set -uxo pipefail"]
+    for line in test_spec.eval_script_list:
+        if "Start Test Output" in line:
+            break
+        setup_lines.append(line)
+    return "\n".join(setup_lines) + "\n"
+
+
 def read_files_from_image(
     client: docker.DockerClient,
     image_name: str,
     file_paths: List[str],
     logger: logging.Logger,
+    test_spec=None,
 ) -> Dict[str, str]:
     source_map: Dict[str, str] = {}
     if not file_paths:
@@ -145,6 +191,19 @@ def read_files_from_image(
     try:
         container = client.containers.create(image=image_name, command="sleep 300", tty=True)
         container.start()
+
+        # Replay eval-script setup so test files (created by git apply) exist
+        if test_spec is not None:
+            setup_script = _extract_setup_script(test_spec)
+            result = container.exec_run(
+                cmd=["/bin/bash", "-c", setup_script],
+                workdir=DOCKER_WORKDIR,
+            )
+            if result.exit_code != 0:
+                logger.debug(
+                    "Setup script returned %d; some files may be unavailable",
+                    result.exit_code,
+                )
 
         for file_path in file_paths:
             quoted = shlex.quote(file_path)
@@ -332,13 +391,35 @@ def build_prompt(
     exception_msg = str(first_trace.get("message", "See failure summary"))
 
     frames: List[Dict[str, Any]] = []
+    exec_path_entries: List[Dict[str, Any]] = []
     for trace in traces:
         trace_frames = trace.get("frames", [])
         if isinstance(trace_frames, list):
             frames.extend([f for f in trace_frames if isinstance(f, dict)])
+        trace_exec_path = trace.get("exec_path", [])
+        if isinstance(trace_exec_path, list):
+            exec_path_entries.extend([e for e in trace_exec_path if isinstance(e, dict)])
 
     if include_runtime:
         runtime_trace = serialize_frames_like_debugger(frames, source_map, frame_context_lines)
+        # Append execution path summary (functions called during test, even if
+        # they returned successfully and don't appear in exception traceback)
+        if exec_path_entries:
+            ep_lines = []
+            seen = set()
+            for entry in exec_path_entries:
+                f = entry.get("file", "?")
+                func = entry.get("func", "?")
+                line = entry.get("line", "?")
+                # Only show project files (skip stdlib/site-packages that may leak through)
+                if "site-packages" in f or not ("/testbed/" in f or f.endswith(".py")):
+                    continue
+                key = (f, func)
+                if key in seen:
+                    continue
+                seen.add(key)
+                ep_lines.append(f"  {f}:{line} in {func}()")
+                runtime_trace += "\n\n## Execution path (functions called during test)\n" + "\n".join(ep_lines)
     else:
         runtime_trace = "Runtime trace intentionally omitted for this run."
 
@@ -665,11 +746,16 @@ def process_instance(
 
     file_line_map = collect_file_line_map(baseline_traces)
     selected_files = select_context_files(file_line_map, args.max_context_files)
+    # Read source for all files referenced in traces (not just selected context files)
+    # so that runtime trace blocks can show source context
+    all_trace_files = list(file_line_map.keys())
+    files_to_read = list(dict.fromkeys(selected_files + all_trace_files))
     source_map = read_files_from_image(
         client=client,
         image_name=test_spec.instance_image_key,
-        file_paths=selected_files,
+        file_paths=files_to_read,
         logger=logger,
+        test_spec=test_spec,
     )
 
     failure_summary = summarize_failures(baseline_traces, baseline_test_output)

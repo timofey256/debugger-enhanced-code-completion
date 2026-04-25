@@ -23,6 +23,7 @@ auto_debug.json
 # SWE-bench run artifacts
 swebench-trace-collection/traces*/
 swebench-trace-collection/debugger_patch_comparison*/
+swebench-trace-collection/benchmark_runs/
 swebench-trace-collection/logs/
 
 # Local experiment artifacts
