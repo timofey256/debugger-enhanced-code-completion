@@ -1,0 +1,6 @@
+File: {filename}
+Function name: {function_name}
+Line: {line}
+Context:
+{context}
+Locals: {locals}

@@ -27,10 +27,10 @@ import docker
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 from libs.env import require_env
+from prompts import PromptBuilder, load_prompt
 
 sys.path.insert(0, require_env("SWE_BENCH_PATH"))
 
-from apps.backend.generate_prompt import _TEMPLATE as DEBUGGER_TEMPLATE
 from llm.connector import LLMConnector
 
 from swebench.harness.constants import (
@@ -45,19 +45,6 @@ from swebench.harness.test_spec.test_spec import make_test_spec
 from swebench.harness.utils import get_predictions_from_file, load_swebench_dataset
 
 from research.swebench.harness.wrapper import run_instance_with_traces
-
-STRICT_PATCH_REQUIREMENTS = textwrap.dedent(
-    """\
-    STRICT PATCH FORMAT REQUIREMENTS (highest priority):
-    - Output only patch text; no prose and no markdown fences.
-    - Use git-compatible unified diff format with file headers:
-      - `diff --git a/<path> b/<path>`
-      - `--- a/<path>`
-      - `+++ b/<path>`
-    - Paths must be repository-relative (e.g. `django/utils/autoreload.py`).
-    - Never use absolute paths such as `/testbed/...`.
-    """
-).strip()
 
 
 def setup_logging(verbose: bool = False) -> logging.Logger:
@@ -421,28 +408,25 @@ def build_prompt(
     else:
         runtime_trace = "Runtime trace intentionally omitted for this run."
 
-    prompt_prefix = textwrap.dedent(
-        f"""\
-        Repository instance: {instance_id}
-
-        ## Failure summary
-        {failure_summary}
-
-        ## Testcase source code
-        {testcase_source}
-
-        ## Related source context (small)
-        {related_context}
-        """
-    ).strip()
-
-    debugger_instructions = DEBUGGER_TEMPLATE.format(
-        exception_type=exception_type,
-        exception_msg=exception_msg,
-        runtime_trace=runtime_trace,
+    prompt_prefix_body = (
+        f"Repository instance: {instance_id}\n\n"
+        f"## Failure summary\n{failure_summary}\n\n"
+        f"## Testcase source code\n{testcase_source}\n\n"
+        f"## Related source context (small)\n{related_context}"
     )
 
-    return f"{prompt_prefix}\n\n{debugger_instructions}\n\n{STRICT_PATCH_REQUIREMENTS}"
+    exception_body = f"Type: {exception_type}\nMessage: {exception_msg}"
+
+    return (
+        PromptBuilder()
+        .add_section("context", prompt_prefix_body)
+        .add_section("intro", load_prompt("debugger/intro.txt").rstrip("\n"))
+        .add_section("exception", exception_body)
+        .add_section("runtime_trace", runtime_trace)
+        .add_section("instructions", load_prompt("debugger/instructions.txt").rstrip("\n"))
+        .add_section("strict_patch_requirements", load_prompt("swebench/strict_patch_requirements.txt").rstrip("\n"))
+        .build()
+    )
 
 
 def _find_diff_start(text: str) -> Optional[int]:
@@ -892,7 +876,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="./debugger_patch_comparison",
+        default="./output/debugger-patch-comparison",
         help="Directory for run outputs and reports",
     )
     parser.add_argument("--provider", type=str, default="deepseek")

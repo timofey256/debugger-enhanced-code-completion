@@ -1,62 +1,10 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-import sys, json, textwrap
+import sys, json
 from pathlib import Path
 
-_TEMPLATE = textwrap.dedent("""\
-    You are acting as a coding assistant who produces **atomic code patches**.
-
-    Goal → **complete / fix** the code so the program runs correctly.
-
-    ## Exception type: {exception_type}
-    ## Exception message: {exception_msg}
-
-    ## Runtime trace
-    {runtime_trace}
-
-    ## What you must do
-    1. **Diagnose** the issue using the trace frames and source context provided.
-    2. Produce **a unified diff patch** (one per file) that fixes the issue.
-       - Use the unified diff format:
-         - `--- path/to/file.py` for the original file
-         - `+++ path/to/file.py` for the new version
-         - Each hunk begins with `@@ -a,b +c,d @@`
-         - Lines to delete start with `-`, lines to add start with `+`
-         - Include at most 3 lines of **unchanged context** above and below (i.e., use `-U3`)
-       - **Do not** include commentary or prose—output only the diff.
-    3. If multiple files need a change, output multiple diff blocks.
-    4. **Carefully set the starting line number `a` in the hunk header** so it matches the first unchanged or deleted line from the original file.
-    5. The diff **must exactly align** with the source context shown in the trace blocks. Do not shift it up or down.
-    6. Make sure to include the whole file path, not just the file name.
-    7. Make sure you copy all the comments from the source code.
-
-    ### Example - correct diff with aligned header and context
-    Original context:
-      40 : def scale(x):
-      41 :     if x is None:
-      42 :         return 0
-      43 :     return x * 2
-
-    You want to modify lines 41-43. Then your diff must look like this:
-
-    ```diff
-    --- src/utils/math.py
-    +++ src/utils/math.py
-    @@ -41,3 +41,4 @@
-         if x is None:
-             return 0
-         return x * 2
-    +    # New logic here
-    ```
-
-    ⚠️ Common mistakes to avoid:
-    - Incorrect start line in the hunk (off by 1 or 2)
-    - Including too many context lines and shifting the diff
-    - Forgetting to match the source indentation
-
-    Nothing else—just the diff.
-    """)
+from prompts import PromptBuilder, load_prompt
 
 def get_ctx_around_line(filename: str, line_nmbr: int, context_size: int) -> str:
     assert context_size > 0, "context_size must be non-negative"
@@ -75,17 +23,10 @@ def serialize_trace(obj: dict) -> str:
     return "```trace\n" + json.dumps(obj, indent=2) + "\n```"
 
 def serialize_frames(frames: list[dict], context_size: int = 10) -> str:
-    FRAME_TEMPLATE = textwrap.dedent("""\
-        File: {filename}
-        Function name: {function_name}
-        Line: {line}
-        Context:
-        {context}
-        Locals: {locals}
-        """)
+    frame_template = load_prompt("debugger/frame_template.txt")
 
     serialized_frame_blocks = [
-        FRAME_TEMPLATE.format(
+        frame_template.format(
             filename=frame["file"],
             function_name=frame["func"],
             line=frame["line"],
@@ -99,7 +40,18 @@ def serialize_frames(frames: list[dict], context_size: int = 10) -> str:
 
 def build_prompt(trace: dict) -> str:
     frames = serialize_frames(trace["frames"])
-    return _TEMPLATE.format(exception_type=trace["exc_type"], exception_msg=trace["message"], runtime_trace=frames)
+    exception_body = (
+        f"Type: {trace['exc_type']}\n"
+        f"Message: {trace['message']}"
+    )
+    return (
+        PromptBuilder()
+        .add_section("intro", load_prompt("debugger/intro.txt").rstrip("\n"))
+        .add_section("exception", exception_body)
+        .add_section("runtime_trace", frames)
+        .add_section("instructions", load_prompt("debugger/instructions.txt").rstrip("\n"))
+        .build()
+    )
 
 def read_json(source: str | Path | None) -> list[dict]:
     raw = sys.stdin.read() if source in (None, "-", "") else Path(source).read_text()
@@ -120,7 +72,7 @@ def main(argv: list[str] = sys.argv[1:]) -> None:
     all_traces = read_json(src)
     trace = all_traces[0]
     prompt = build_prompt(trace)
-    out_path = Path(argv[1]) if len(argv) > 1 else Path("data/traces/prompt.txt")
+    out_path = Path(argv[1]) if len(argv) > 1 else Path("output/traces/prompt.txt")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
         f.write(prompt)

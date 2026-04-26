@@ -10,7 +10,7 @@ Usage:
         --dataset princeton-nlp/SWE-bench_Lite \
         --instance_ids django__django-11583 \
         --predictions_path gold \
-        --output_dir data/traces/swebench
+        --output_dir output/traces/swebench
 """
 
 import argparse
@@ -84,7 +84,7 @@ def main():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="data/traces/swebench",
+        default="output/traces/swebench",
         help="Output directory for trace files",
     )
 

@@ -1,0 +1,41 @@
+## What you must do
+1. **Diagnose** the issue using the trace frames and source context provided.
+2. Produce **a unified diff patch** (one per file) that fixes the issue.
+   - Use the unified diff format:
+     - `--- path/to/file.py` for the original file
+     - `+++ path/to/file.py` for the new version
+     - Each hunk begins with `@@ -a,b +c,d @@`
+     - Lines to delete start with `-`, lines to add start with `+`
+     - Include at most 3 lines of **unchanged context** above and below (i.e., use `-U3`)
+   - **Do not** include commentary or prose—output only the diff.
+3. If multiple files need a change, output multiple diff blocks.
+4. **Carefully set the starting line number `a` in the hunk header** so it matches the first unchanged or deleted line from the original file.
+5. The diff **must exactly align** with the source context shown in the trace blocks. Do not shift it up or down.
+6. Make sure to include the whole file path, not just the file name.
+7. Make sure you copy all the comments from the source code.
+
+### Example - correct diff with aligned header and context
+Original context:
+  40 : def scale(x):
+  41 :     if x is None:
+  42 :         return 0
+  43 :     return x * 2
+
+You want to modify lines 41-43. Then your diff must look like this:
+
+```diff
+--- src/utils/math.py
++++ src/utils/math.py
+@@ -41,3 +41,4 @@
+     if x is None:
+         return 0
+     return x * 2
++    # New logic here
+```
+
+⚠️ Common mistakes to avoid:
+- Incorrect start line in the hunk (off by 1 or 2)
+- Including too many context lines and shifting the diff
+- Forgetting to match the source indentation
+
+Nothing else—just the diff.
