@@ -340,10 +340,10 @@ def main():
     Process debug trace log and create an LLM completion request.
     
     Usage:
-        python -m apps.backend.server_pkg.trace_to_prompt /path/to/trace_log.json
+        python -m apps.backend.trace_to_prompt /path/to/trace_log.json
     """
     if len(sys.argv) < 2:
-        print("Usage: python -m apps.backend.server_pkg.trace_to_prompt /path/to/trace_log.json")
+        print("Usage: python -m apps.backend.trace_to_prompt /path/to/trace_log.json")
         sys.exit(1)
     
     trace_log_path = sys.argv[1] 

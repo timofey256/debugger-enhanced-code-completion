@@ -30,7 +30,7 @@ from libs.env import require_env
 
 sys.path.insert(0, require_env("SWE_BENCH_PATH"))
 
-from apps.backend.server_pkg.generate_prompt import _TEMPLATE as DEBUGGER_TEMPLATE
+from apps.backend.generate_prompt import _TEMPLATE as DEBUGGER_TEMPLATE
 from llm.connector import LLMConnector
 
 from swebench.harness.constants import (

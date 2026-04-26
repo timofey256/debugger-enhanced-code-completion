@@ -230,7 +230,7 @@ class AutomatedCompletionTester:
         try:
             print(f"Running trace_to_prompt with trace log: {trace_log_path}")
             result = subprocess.run(
-                [sys.executable, "-m", "apps.backend.server_pkg.trace_to_prompt", trace_log_path, "--config", config_path],
+                [sys.executable, "-m", "apps.backend.trace_to_prompt", trace_log_path, "--config", config_path],
                 capture_output=True,
                 text=True
             )
