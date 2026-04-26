@@ -1,221 +1,118 @@
 #!/usr/bin/env python3
-"""
-Run SWE-bench evaluation with trace collection.
+"""Run SWE-bench evaluation with trace collection."""
 
-This script wraps SWE-bench's evaluation harness to collect detailed stack traces
-from failing tests.
-
-Usage:
-    python run_swebench_with_traces.py \
-        --dataset princeton-nlp/SWE-bench_Lite \
-        --instance_ids django__django-11583 \
-        --predictions_path gold \
-        --output_dir output/traces/swebench
-"""
+from __future__ import annotations
 
 import argparse
-import docker
 import json
-import logging
 import sys
 from pathlib import Path
 
-from libs.env import require_env
+import docker
 
-sys.path.insert(0, require_env("SWE_BENCH_PATH"))
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
-from swebench.harness.utils import (
-    load_swebench_dataset,
-    get_predictions_from_file,
+from libs.harness import (
+    FrameworkDetector,
+    TraceOutputManager,
+    TracedInstanceRunner,
 )
-from swebench.harness.test_spec.test_spec import make_test_spec
-from swebench.harness.docker_build import build_env_images
+from libs.log import create_logger
+
 from swebench.harness.constants import KEY_INSTANCE_ID
-
-from research.swebench.harness.wrapper import run_instance_with_traces
-
-
-def setup_logging(verbose: bool = False):
-    """Set up logging configuration."""
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    return logging.getLogger(__name__)
+from swebench.harness.docker_build import build_env_images
+from swebench.harness.test_spec.test_spec import make_test_spec
+from swebench.harness.utils import (
+    get_predictions_from_file,
+    load_swebench_dataset,
+)
 
 
-def main():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run SWE-bench evaluation with trace collection",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument("--dataset", type=str, default="princeton-nlp/SWE-bench_Lite")
+    parser.add_argument("--split", type=str, default="test")
+    parser.add_argument("--instance_ids", nargs="+", type=str)
+    parser.add_argument("--predictions_path", type=str, default="gold")
+    parser.add_argument("--output_dir", type=str, default="output/traces/swebench")
+    parser.add_argument("--timeout", type=int, default=None)
+    parser.add_argument("--force_rebuild", action="store_true")
+    parser.add_argument("--nocache", action="store_true")
+    parser.add_argument("--run_id", type=str, default="trace_collection")
+    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--skip-patch", dest="skip_patch", action="store_true")
+    return parser.parse_args()
 
-    # Dataset arguments
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        default="princeton-nlp/SWE-bench_Lite",
-        help="SWE-bench dataset name",
-    )
-    parser.add_argument(
-        "--split",
-        type=str,
-        default="test",
-        help="Dataset split to use",
-    )
-    parser.add_argument(
-        "--instance_ids",
-        nargs="+",
-        type=str,
-        help="Specific instance IDs to run (space-separated). If not provided, runs all instances.",
-    )
 
-    # Prediction arguments
-    parser.add_argument(
-        "--predictions_path",
-        type=str,
-        default="gold",
-        help="Path to predictions file (JSONL/JSON) or 'gold' for ground truth patches",
-    )
+def main() -> int:
+    args = parse_args()
+    logger = create_logger("swebench_trace_collection", verbose=args.verbose)
 
-    # Output arguments
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default="output/traces/swebench",
-        help="Output directory for trace files",
-    )
-
-    # Runtime arguments
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=None,
-        help="Timeout for test execution (seconds)",
-    )
-    parser.add_argument(
-        "--force_rebuild",
-        action="store_true",
-        help="Force rebuild of Docker images",
-    )
-    parser.add_argument(
-        "--nocache",
-        action="store_true",
-        help="Don't use cache when building images",
-    )
-    parser.add_argument(
-        "--run_id",
-        type=str,
-        default="trace_collection",
-        help="Run ID for this execution",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging",
-    )
-    parser.add_argument(
-        "--skip-patch",
-        action="store_true",
-        help="Skip patch application (useful for collecting traces from original failing tests)",
-    )
-
-    args = parser.parse_args()
-
-    # Set up logging
-    logger = setup_logging(args.verbose)
-
-    logger.info("="*70)
+    logger.info("=" * 70)
     logger.info("SWE-bench Trace Collection")
-    logger.info("="*70)
-    logger.info(f"Dataset: {args.dataset}")
-    logger.info(f"Output directory: {args.output_dir}")
-    logger.info(f"Run ID: {args.run_id}")
+    logger.info("=" * 70)
+    logger.info("Dataset: %s", args.dataset)
+    logger.info("Output directory: %s", args.output_dir)
+    logger.info("Run ID: %s", args.run_id)
 
-    # Set up paths
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # libs/tracing/ is the canonical home for trace collectors
-    trace_collector_dir = Path(__file__).resolve().parents[3] / "libs" / "tracing"
+    trace_collector_dir = REPO_ROOT / "libs" / "tracing"
     if not trace_collector_dir.exists():
-        logger.error(f"Trace collector directory not found: {trace_collector_dir}")
+        logger.error("Trace collector directory not found: %s", trace_collector_dir)
         return 1
+    logger.info("Trace collectors: %s", trace_collector_dir)
 
-    logger.info(f"Trace collectors: {trace_collector_dir}")
-
-    # Load dataset
-    logger.info(f"Loading dataset: {args.dataset}")
-    logger.debug(f"Instance IDs filter: {args.instance_ids}")
+    logger.info("Loading dataset: %s", args.dataset)
     try:
-        dataset = load_swebench_dataset(
-            args.dataset,
-            args.split,
-        )
-
-        # Filter to specified instance_ids if provided
+        dataset = load_swebench_dataset(args.dataset, args.split)
         if args.instance_ids:
-            logger.info(f"Filtering dataset to {len(args.instance_ids)} instance(s): {args.instance_ids}")
             instance_ids_set = set(args.instance_ids)
-            original_count = len(dataset)
             dataset = [
-                instance for instance in dataset
+                instance
+                for instance in dataset
                 if instance[KEY_INSTANCE_ID] in instance_ids_set
             ]
-            logger.info(f"Filtered from {original_count} to {len(dataset)} instance(s)")
-        else:
-            logger.info("No instance_ids filter specified, using all instances")
-    except Exception as e:
-        logger.error(f"Failed to load dataset: {e}")
+    except Exception as exc:
+        logger.error("Failed to load dataset: %s", exc)
         return 1
 
     if not dataset:
         logger.error("No instances found in dataset")
         return 1
+    logger.info("Loaded %d instances", len(dataset))
 
-    logger.info(f"Loaded {len(dataset)} instances")
-
-    # Load predictions
-    logger.info(f"Loading predictions from: {args.predictions_path}")
+    logger.info("Loading predictions from: %s", args.predictions_path)
     try:
         predictions = get_predictions_from_file(
-            args.predictions_path,
-            args.dataset,
-            args.split,
+            args.predictions_path, args.dataset, args.split
         )
         predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
-    except Exception as e:
-        logger.error(f"Failed to load predictions: {e}")
+    except Exception as exc:
+        logger.error("Failed to load predictions: %s", exc)
         return 1
+    logger.info("Loaded predictions for %d instances", len(predictions))
 
-    logger.info(f"Loaded predictions for {len(predictions)} instances")
-
-    # Create TestSpecs for all instances
-    logger.info("Creating test specifications...")
     test_specs = []
     for instance in dataset:
         instance_id = instance[KEY_INSTANCE_ID]
-
         if instance_id not in predictions:
-            logger.warning(f"No prediction found for {instance_id}, skipping")
+            logger.warning("No prediction found for %s, skipping", instance_id)
             continue
+        test_specs.append(make_test_spec(instance))
+    logger.info("Created %d test specifications", len(test_specs))
 
-        test_spec = make_test_spec(instance)
-        test_specs.append(test_spec)
-
-    logger.info(f"Created {len(test_specs)} test specifications")
-
-    # Initialize Docker client
     logger.info("Connecting to Docker...")
     try:
         client = docker.from_env()
-    except Exception as e:
-        logger.error(f"Failed to connect to Docker: {e}")
+    except Exception as exc:
+        logger.error("Failed to connect to Docker: %s", exc)
         return 1
 
-    # Build environment images (if not already built)
     if not args.force_rebuild:
         logger.info("Building/checking environment images...")
         try:
@@ -223,78 +120,72 @@ def main():
                 client,
                 dataset,
                 force_rebuild=args.force_rebuild,
-                max_workers=1,  # Sequential for now
+                max_workers=1,
                 namespace=None,
                 instance_image_tag="latest",
                 env_image_tag="latest",
             )
-        except Exception as e:
-            logger.error(f"Failed to build environment images: {e}")
+        except Exception as exc:
+            logger.error("Failed to build environment images: %s", exc)
             return 1
 
-    # Run trace collection for each instance
-    logger.info("\n" + "="*70)
+    output_manager = TraceOutputManager(output_dir)
+    framework_detector = FrameworkDetector()
+
+    logger.info("\n" + "=" * 70)
     logger.info("Starting trace collection")
-    logger.info("="*70)
+    logger.info("=" * 70)
 
     results = []
     for test_spec in test_specs:
         instance_id = test_spec.instance_id
         pred = predictions[instance_id]
-
-        # Run instance with trace collection
-        result = run_instance_with_traces(
-            test_spec=test_spec,
-            pred=pred,
+        runner = TracedInstanceRunner(
             client=client,
+            test_spec=test_spec,
             run_id=args.run_id,
-            trace_output_base=str(output_dir),
-            trace_collector_dir=str(trace_collector_dir),
+            trace_collector_dir=trace_collector_dir,
+            output_manager=output_manager,
+            framework_detector=framework_detector,
+            logger=logger,
             timeout=args.timeout,
             force_rebuild=args.force_rebuild,
             nocache=args.nocache,
-            skip_patch=args.skip_patch,
-            logger=logger,
         )
+        result = runner.run(pred, skip_patch=args.skip_patch)
+        results.append(result.to_dict())
 
-        results.append(result)
-
-    # Print summary
-    logger.info("\n" + "="*70)
+    logger.info("\n" + "=" * 70)
     logger.info("Trace Collection Summary")
-    logger.info("="*70)
-
+    logger.info("=" * 70)
     successful = [r for r in results if r.get("success")]
     failed = [r for r in results if not r.get("success")]
-
-    logger.info(f"Total instances: {len(results)}")
-    logger.info(f"Successful: {len(successful)}")
-    logger.info(f"Failed: {len(failed)}")
+    logger.info("Total instances: %d", len(results))
+    logger.info("Successful: %d", len(successful))
+    logger.info("Failed: %d", len(failed))
 
     if successful:
         logger.info("\nSuccessful instances:")
-        for result in successful:
-            logger.info(f"  ✓ {result['instance_id']}: "
-                       f"{result.get('num_failures', 0)} failures captured "
-                       f"({result.get('framework', 'unknown')})")
-
+        for r in successful:
+            logger.info(
+                "  %s: %d failures captured (%s)",
+                r["instance_id"],
+                r.get("num_failures", 0),
+                r.get("framework", "unknown"),
+            )
     if failed:
         logger.info("\nFailed instances:")
-        for result in failed:
-            logger.info(f"  ✗ {result['instance_id']}: {result.get('error', 'Unknown error')}")
+        for r in failed:
+            logger.info("  %s: %s", r["instance_id"], r.get("error", "Unknown error"))
 
-    # Save results summary
     summary_file = output_dir / f"summary_{args.run_id}.json"
-    with open(summary_file, 'w') as f:
-        json.dump(results, f, indent=2)
-    logger.info(f"\nResults summary saved to: {summary_file}")
+    summary_file.write_text(json.dumps(results, indent=2), encoding="utf-8")
+    logger.info("\nResults summary saved to: %s", summary_file)
 
-    # Exit with error if any instances failed (user requested strict mode)
     if failed:
         logger.error("\nTrace collection failed for some instances. See errors above.")
         return 1
-
-    logger.info("\n✓ All instances completed successfully!")
+    logger.info("\nAll instances completed successfully!")
     return 0
 
 

@@ -1,31 +1,25 @@
 #!/usr/bin/env python3
-"""
-Run debugger patch-comparison evaluation over SWE-bench Lite at dataset scale.
-"""
+"""Run debugger patch-comparison evaluation over SWE-bench Lite at dataset scale."""
 
 from __future__ import annotations
 
 import argparse
-import logging
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Dict, List, Tuple
 
 import docker
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-from libs.env import require_env
+from libs.harness import (
+    ComparisonConfig,
+    FrameworkDetector,
+    InstanceComparison,
+)
+from libs.llm.connector import LLMConnector
+from libs.log import create_logger
 
-sys.path.insert(0, require_env("SWE_BENCH_PATH"))
-
-from research.swebench.evaluation.run_debugger_patch_comparison import process_instance
-from swebench.harness.constants import KEY_INSTANCE_ID
-from swebench.harness.docker_build import build_env_images
-from swebench.harness.test_spec.test_spec import make_test_spec
-from swebench.harness.utils import get_predictions_from_file, load_swebench_dataset
 from research.swebench.harness.benchmark_index import (
     append_record,
     build_instance_index_record,
@@ -33,6 +27,10 @@ from research.swebench.harness.benchmark_index import (
     init_run_index,
     write_run_index,
 )
+from swebench.harness.constants import KEY_INSTANCE_ID
+from swebench.harness.docker_build import build_env_images
+from swebench.harness.test_spec.test_spec import make_test_spec
+from swebench.harness.utils import get_predictions_from_file, load_swebench_dataset
 
 
 def resolve_run_id(raw_run_id: str | None) -> str:
@@ -53,8 +51,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--predictions_path", type=str, default="gold")
     parser.add_argument("--output_dir", type=str, default="./output/benchmark-runs")
     parser.add_argument("--run_id", type=str, default=None)
-
-    # per-instance comparison args
     parser.add_argument("--provider", type=str, default="deepseek")
     parser.add_argument("--model", type=str, default="deepseek-chat")
     parser.add_argument("--max_tokens", type=int, default=2500)
@@ -66,31 +62,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nocache", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
-
-
-def create_logger(log_path: Path, verbose: bool) -> logging.Logger:
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-
-    logger = logging.getLogger("swebench_lite_evaluation")
-    logger.setLevel(logging.DEBUG if verbose else logging.INFO)
-    logger.handlers.clear()
-
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    file_handler = logging.FileHandler(log_path, encoding="utf-8")
-    file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.DEBUG if verbose else logging.INFO)
-
-    stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setFormatter(formatter)
-    stream_handler.setLevel(logging.DEBUG if verbose else logging.INFO)
-
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
-    return logger
 
 
 def select_instances(
@@ -106,7 +77,7 @@ def select_instances(
 def build_test_specs(
     instances: List[Dict[str, Any]],
     predictions_by_id: Dict[str, Dict[str, Any]],
-    logger: logging.Logger,
+    logger,
 ) -> List[Tuple[Any, Dict[str, Any]]]:
     items: List[Tuple[Any, Dict[str, Any]]] = []
     for instance in instances:
@@ -119,11 +90,9 @@ def build_test_specs(
     return items
 
 
-def build_comparison_args(args: argparse.Namespace, run_id: str) -> SimpleNamespace:
-    return SimpleNamespace(
-        run_id=run_id,
-        provider=args.provider,
-        model=args.model,
+def build_config(args: argparse.Namespace) -> ComparisonConfig:
+    return ComparisonConfig(
+        model_name=args.model,
         max_tokens=args.max_tokens,
         context_lines=args.context_lines,
         test_context_lines=args.test_context_lines,
@@ -140,7 +109,9 @@ def main() -> int:
 
     run_root = Path(args.output_dir).resolve() / run_id
     log_path = run_root / "logs" / "run.log"
-    logger = create_logger(log_path, args.verbose)
+    logger = create_logger(
+        "swebench_lite_evaluation", log_path=log_path, verbose=args.verbose
+    )
 
     logger.info("Run ID: %s", run_id)
     logger.info("Run root: %s", run_root)
@@ -160,7 +131,9 @@ def main() -> int:
         return 1
 
     logger.info("Loading predictions from: %s", args.predictions_path)
-    predictions = get_predictions_from_file(args.predictions_path, args.dataset, args.split)
+    predictions = get_predictions_from_file(
+        args.predictions_path, args.dataset, args.split
+    )
     predictions_by_id = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
 
     test_specs = build_test_specs(selected_instances, predictions_by_id, logger)
@@ -187,7 +160,9 @@ def main() -> int:
         logger.error("Trace collector directory not found: %s", trace_collector_dir)
         return 1
 
-    comparison_args = build_comparison_args(args, run_id)
+    config = build_config(args)
+    llm = LLMConnector(provider=args.provider, model=args.model)
+    framework_detector = FrameworkDetector()
 
     index = init_run_index(
         run_id=run_id,
@@ -206,18 +181,23 @@ def main() -> int:
         instance_id = test_spec.instance_id
         logger.info("[%d/%d] Starting %s", idx, total, instance_id)
 
-        report = process_instance(
-            args=comparison_args,
-            client=client,
+        comparison = InstanceComparison(
             test_spec=test_spec,
             reference_pred=reference_pred,
+            client=client,
+            llm=llm,
             trace_collector_dir=trace_collector_dir,
-            logger=logger,
             output_dir=run_root,
+            run_id=run_id,
+            config=config,
+            logger=logger,
+            framework_detector=framework_detector,
         )
+        report = comparison.run()
+        report_dict = report.to_dict()
 
         report_path = run_root / "artifacts" / instance_id / "comparison_report.json"
-        record = build_instance_index_record(report, report_path=report_path)
+        record = build_instance_index_record(report_dict, report_path=report_path)
         append_record(index, record)
         write_run_index(index_path, index)
 
@@ -236,7 +216,6 @@ def main() -> int:
     write_run_index(index_path, index)
     logger.info("Dataset run complete")
     logger.info("Index file: %s", index_path)
-
     return 0
 
 

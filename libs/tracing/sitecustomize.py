@@ -34,13 +34,19 @@ def should_activate() -> bool:
 
 
 def detect_framework() -> str:
-    """Detect which testing framework is being used."""
-    # sys.argv may not be available during early imports (e.g., pip install)
+    """Detect which testing framework is being used.
+
+    Honors the AUTO_DEBUG_FRAMEWORK env var when set by FrameworkDetector
+    on the host. Falls back to argv/sys.modules sniffing only if absent.
+    """
+    declared = os.environ.get('AUTO_DEBUG_FRAMEWORK')
+    if declared in ('pytest', 'unittest', 'django', 'unknown'):
+        return declared
+
     argv_str = ""
     if hasattr(sys, 'argv') and sys.argv:
         argv_str = " ".join(sys.argv)
 
-    # Check command line arguments
     if argv_str and ("pytest" in argv_str or "py.test" in argv_str):
         return "pytest"
 
@@ -50,11 +56,9 @@ def detect_framework() -> str:
     if argv_str and ("manage.py test" in argv_str or "runtests.py" in argv_str):
         return "django"
 
-    # Check if django is loaded (also indicates Django tests)
     if "django" in sys.modules:
         return "django"
 
-    # Check loaded modules
     if "pytest" in sys.modules:
         return "pytest"
 
