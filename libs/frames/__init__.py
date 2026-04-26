@@ -1,5 +1,5 @@
 from libs.frames.frame import Frame
-from libs.frames.serializer import LocalsSerializer
+from libs.frames.serializer import FrameSerializer, LocalsSerializer
 from libs.frames.filters import (
     FrameFilter,
     FrozenOrSyntheticFrameFilter,
@@ -14,9 +14,11 @@ from libs.frames.pipeline import (
     default_traceback_pipeline,
     default_exec_path_pipeline,
 )
+from libs.frames.selection import select_most_informative_trace
 
 __all__ = [
     "Frame",
+    "FrameSerializer",
     "LocalsSerializer",
     "FrameFilter",
     "FrozenOrSyntheticFrameFilter",
@@ -28,4 +30,5 @@ __all__ = [
     "FramesFilteringPipeline",
     "default_traceback_pipeline",
     "default_exec_path_pipeline",
+    "select_most_informative_trace",
 ]
