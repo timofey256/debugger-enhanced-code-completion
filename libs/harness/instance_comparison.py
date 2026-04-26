@@ -220,7 +220,7 @@ class InstanceComparison:
 
     def run(self) -> ComparisonReport:
         instance_id = self._test_spec.instance_id
-        self._logger.info("\n%s", "=" * 70)
+        self._logger.info("%s", "=" * 70)
         self._logger.info("Processing debugger comparison for %s", instance_id)
         self._logger.info("%s", "=" * 70)
 
