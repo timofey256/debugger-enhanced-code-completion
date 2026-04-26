@@ -1,0 +1,28 @@
+# EXCEPTION {index} INFORMATION
+Type: {exception_type}
+Message: {exception_message}
+
+## FAILING CODE - EXCEPTION {index}
+```python
+{source_code}
+```
+
+## TRACEBACK - EXCEPTION {index}
+```
+{traceback}
+```
+
+## EXECUTION CONTEXT - EXCEPTION {index}
+```
+{execution_context}
+```
+
+## VARIABLE VALUES AT EXCEPTION TIME - EXCEPTION {index}
+```
+{relevant_variables}
+```
+
+## CLASS API CONTEXT - EXCEPTION {index}
+```
+{class_context}
+```

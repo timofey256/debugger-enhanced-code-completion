@@ -1,0 +1,9 @@
+Based on the information above, please:
+1. Identify all functions that need to be implemented (including those with NotImplementedError)
+2. Provide a complete implementation of ALL functions that would pass the tests
+3. Make sure to implement ALL functions, not just the ones that had exceptions
+4. Explain your reasoning for the implementations
+
+```python
+# Your implementation here
+```

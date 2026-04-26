@@ -1,0 +1,8 @@
+STRICT PATCH FORMAT REQUIREMENTS (highest priority):
+- Output only patch text; no prose and no markdown fences.
+- Use git-compatible unified diff format with file headers:
+  - `diff --git a/<path> b/<path>`
+  - `--- a/<path>`
+  - `+++ b/<path>`
+- Paths must be repository-relative (e.g. `django/utils/autoreload.py`).
+- Never use absolute paths such as `/testbed/...`.
