@@ -80,17 +80,10 @@ class FrameworkDetector:
         ]
 
     def _pytest_conftest_commands(self) -> List[str]:
-        return [
-            "if [ -f /testbed/conftest.py ]; then",
-            "    echo 'Backing up existing /testbed/conftest.py'",
-            "    cp /testbed/conftest.py /testbed/conftest.py.bak",
-            "fi",
-            "echo 'Installing trace collector conftest.py'",
-            "cp /opt/tracers/pytest_tracer.py /testbed/conftest.py",
-            "chmod 644 /testbed/conftest.py",
-            "if [ ! -f /testbed/conftest.py ]; then",
-            "    echo 'ERROR: Failed to install conftest.py'",
-            "    exit 1",
-            "fi",
-            "echo 'Trace collection setup complete (pytest)'",
-        ]
+        return self._load_template("pytest_conftest_setup.sh")
+
+    @staticmethod
+    def _load_template(name: str) -> List[str]:
+        template_path = Path(__file__).resolve().parent.parent / "tracing" / "templates" / name
+        text = template_path.read_text(encoding="utf-8")
+        return [line for line in text.splitlines() if line != ""]

@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from libs.harness import Status, Variant
+
 
 def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -26,22 +28,22 @@ def classify_failure_reason(
     summary_line: Optional[str],
     run_error: Optional[str],
 ) -> Optional[str]:
-    if status == "passed":
+    if status == Status.PASSED.value:
         return None
 
     combined = f"{summary_line or ''} {run_error or ''}".lower()
 
-    if status == "apply_failed":
+    if status == Status.APPLY_FAILED.value:
         return "patch_apply_failed"
 
-    if status == "not_run":
+    if status == Status.NOT_RUN.value:
         if "no unified diff" in combined:
             return "no_patch_generated"
         if "unauthorized" in combined or "401" in combined:
             return "llm_request_failed"
         return "not_run"
 
-    if status == "failed":
+    if status == Status.FAILED.value:
         if "timed out" in combined or "timeout" in combined:
             return "test_timeout"
         return "tests_failed"
@@ -58,7 +60,7 @@ def normalize_variant_record(variant_report: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(run_result, dict):
         run_result = {}
 
-    status = str(outcome.get("status", "not_run"))
+    status = str(outcome.get("status", Status.NOT_RUN.value))
     summary_line = str(outcome.get("summary_line", ""))
     run_error = str(run_result.get("error", ""))
 
@@ -85,7 +87,7 @@ def normalize_baseline_record(baseline_report: Dict[str, Any]) -> Dict[str, Any]
     if not isinstance(run_result, dict):
         run_result = {}
 
-    status = str(outcome.get("status", "unknown"))
+    status = str(outcome.get("status", Status.UNKNOWN.value))
     summary_line = str(outcome.get("summary_line", ""))
     run_error = str(run_result.get("error", ""))
 
@@ -106,8 +108,8 @@ def build_instance_index_record(
     report_path: Path,
 ) -> Dict[str, Any]:
     baseline = report.get("baseline", {})
-    without_runtime = report.get("without_runtime", {})
-    with_runtime = report.get("with_runtime", {})
+    without_runtime = report.get(Variant.WITHOUT_RUNTIME.value, {})
+    with_runtime = report.get(Variant.WITH_RUNTIME.value, {})
 
     if not isinstance(baseline, dict):
         baseline = {}
@@ -123,8 +125,8 @@ def build_instance_index_record(
         "artifact_report_path": str(report_path),
         "baseline": normalize_baseline_record(baseline),
         "variants": {
-            "without_runtime": normalize_variant_record(without_runtime),
-            "with_runtime": normalize_variant_record(with_runtime),
+            Variant.WITHOUT_RUNTIME.value: normalize_variant_record(without_runtime),
+            Variant.WITH_RUNTIME.value: normalize_variant_record(with_runtime),
         },
     }
 

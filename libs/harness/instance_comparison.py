@@ -7,8 +7,9 @@ import shlex
 import textwrap
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, TypeVar
 
 import docker
 
@@ -27,16 +28,42 @@ from swebench.harness.constants import (
 )
 
 
+class Variant(str, Enum):
+    BASELINE = "baseline"
+    WITHOUT_RUNTIME = "without_runtime"
+    WITH_RUNTIME = "with_runtime"
+
+
+class Status(str, Enum):
+    PASSED = "passed"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+    APPLY_FAILED = "apply_failed"
+    NOT_RUN = "not_run"
+
+
+class Verdict(str, Enum):
+    FIXED = "fixed"
+    IMPROVED = "improved"
+    UNCHANGED = "unchanged"
+    REGRESSED = "regressed"
+    NOT_RUN = "not_run"
+    UNKNOWN = "unknown"
+
+
+T = TypeVar("T")
+
+
 @dataclass
 class Outcome:
-    status: str = "unknown"
+    status: Status = Status.UNKNOWN
     failure_count: Optional[int] = None
     ran_tests: Optional[int] = None
     summary_line: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "status": self.status,
+            "status": self.status.value,
             "failure_count": self.failure_count,
             "ran_tests": self.ran_tests,
             "summary_line": self.summary_line,
@@ -45,7 +72,7 @@ class Outcome:
 
 @dataclass
 class VariantResult:
-    variant: str
+    variant: Variant
     prompt_path: Path
     response_path: Path
     patch_path: Path
@@ -62,7 +89,7 @@ class VariantResult:
             else self.run_result
         )
         payload: Dict[str, Any] = {
-            "variant": self.variant,
+            "variant": self.variant.value,
             "prompt_path": str(self.prompt_path),
             "response_path": str(self.response_path),
             "patch_path": str(self.patch_path),
@@ -104,9 +131,9 @@ class ComparisonReport:
             "instance_id": self.instance_id,
             "framework": self.framework,
             "created_at": self.created_at,
-            "baseline": self.baseline,
-            "without_runtime": self.without_runtime.to_dict(),
-            "with_runtime": self.with_runtime.to_dict(),
+            Variant.BASELINE.value: self.baseline,
+            Variant.WITHOUT_RUNTIME.value: self.without_runtime.to_dict(),
+            Variant.WITH_RUNTIME.value: self.with_runtime.to_dict(),
             "patches": self.patches,
             "comparison": self.comparison,
         }
@@ -159,9 +186,12 @@ class InstanceComparison:
         self._stdlib_filter = stdlib_filter or StdlibFilter()
         self._framework_detector = framework_detector or FrameworkDetector()
 
-        self._baseline_base = self._output_dir / "baseline"
-        self._without_base = self._output_dir / "without_runtime"
-        self._with_base = self._output_dir / "with_runtime"
+        self._framework = self._framework_detector.detect(self._test_spec)
+        self._framework_value = self._framework.value
+
+        self._baseline_base = self._output_dir / Variant.BASELINE.value
+        self._without_base = self._output_dir / Variant.WITHOUT_RUNTIME.value
+        self._with_base = self._output_dir / Variant.WITH_RUNTIME.value
         self._artifacts_dir = self._output_dir / "artifacts" / test_spec.instance_id
         self._artifacts_dir.mkdir(parents=True, exist_ok=True)
 
@@ -169,17 +199,17 @@ class InstanceComparison:
         self._without_output = TraceOutputManager(self._without_base)
         self._with_output = TraceOutputManager(self._with_base)
 
-        self._baseline_runner = self._make_runner(self._baseline_output, "baseline")
-        self._without_runner = self._make_runner(self._without_output, "without_runtime")
-        self._with_runner = self._make_runner(self._with_output, "with_runtime")
+        self._baseline_runner = self._make_runner(self._baseline_output, Variant.BASELINE)
+        self._without_runner = self._make_runner(self._without_output, Variant.WITHOUT_RUNTIME)
+        self._with_runner = self._make_runner(self._with_output, Variant.WITH_RUNTIME)
 
     def _make_runner(
-        self, output_manager: TraceOutputManager, suffix: str
+        self, output_manager: TraceOutputManager, variant: Variant
     ) -> TracedInstanceRunner:
         return TracedInstanceRunner(
             client=self._client,
             test_spec=self._test_spec,
-            run_id=f"{self._run_id}_{suffix}",
+            run_id=f"{self._run_id}_{variant.value}",
             trace_collector_dir=self._trace_collector_dir,
             output_manager=output_manager,
             framework_detector=self._framework_detector,
@@ -202,13 +232,13 @@ class InstanceComparison:
         prompts = self._build_prompts(baseline)
 
         without = self._run_variant(
-            "without_runtime",
+            Variant.WITHOUT_RUNTIME,
             prompts.without,
             self._without_runner,
             self._without_output,
         )
         with_ = self._run_variant(
-            "with_runtime",
+            Variant.WITH_RUNTIME,
             prompts.with_,
             self._with_runner,
             self._with_output,
@@ -302,11 +332,12 @@ class InstanceComparison:
 
     def _run_variant(
         self,
-        variant_name: str,
+        variant: Variant,
         prompt: str,
         runner: TracedInstanceRunner,
         output_manager: TraceOutputManager,
     ) -> VariantResult:
+        variant_name = variant.value
         prompt_path = self._artifacts_dir / f"prompt_{variant_name}.txt"
         response_path = self._artifacts_dir / f"response_{variant_name}.txt"
         patch_path = self._artifacts_dir / f"patch_{variant_name}.diff"
@@ -321,19 +352,19 @@ class InstanceComparison:
 
         if not patch_text.strip():
             return VariantResult(
-                variant=variant_name,
+                variant=variant,
                 prompt_path=prompt_path,
                 response_path=response_path,
                 patch_path=patch_path,
                 generated_patch=patch_text,
                 outcome=Outcome(
-                    status="not_run",
+                    status=Status.NOT_RUN,
                     summary_line="not run (no patch extracted)",
                 ),
                 run_result=RunResult(
                     success=False,
                     instance_id=self._test_spec.instance_id,
-                    framework=runner.framework.value,
+                    framework=self._framework_value,
                     error="No unified diff could be extracted from model response.",
                 ),
                 run_skipped=True,
@@ -348,9 +379,9 @@ class InstanceComparison:
 
         if not run_result.success:
             run_error = run_result.error or "variant execution failed"
-            status = "apply_failed" if "Patch Apply Failed" in run_error else "not_run"
+            status = Status.APPLY_FAILED if "Patch Apply Failed" in run_error else Status.NOT_RUN
             return VariantResult(
-                variant=variant_name,
+                variant=variant,
                 prompt_path=prompt_path,
                 response_path=response_path,
                 patch_path=patch_path,
@@ -370,7 +401,7 @@ class InstanceComparison:
         outcome = self._parse_test_output(test_output_text)
 
         return VariantResult(
-            variant=variant_name,
+            variant=variant,
             prompt_path=prompt_path,
             response_path=response_path,
             patch_path=patch_path,
@@ -401,8 +432,12 @@ class InstanceComparison:
             "outcome": baseline.outcome.to_dict(),
         }
         comparison = {
-            "without_runtime_verdict": self._build_verdict(baseline.outcome, without),
-            "with_runtime_verdict": self._build_verdict(baseline.outcome, with_),
+            f"{Variant.WITHOUT_RUNTIME.value}_verdict": self._build_verdict(
+                baseline.outcome, without
+            ).value,
+            f"{Variant.WITH_RUNTIME.value}_verdict": self._build_verdict(
+                baseline.outcome, with_
+            ).value,
         }
         return ComparisonReport(
             instance_id=instance_id,
@@ -441,9 +476,9 @@ class InstanceComparison:
         return data if isinstance(data, list) else []
 
     @staticmethod
-    def _unique_in_order(items: Iterable[str]) -> List[str]:
+    def _unique_in_order(items: Iterable[T]) -> List[T]:
         seen = set()
-        ordered: List[str] = []
+        ordered: List[T] = []
         for item in items:
             if item in seen:
                 continue
@@ -680,19 +715,16 @@ class InstanceComparison:
         blocks: List[str] = []
         for path in selected_files:
             line_numbers = self._unique_in_order(
-                [
-                    str(line)
-                    for line in file_line_map.get(path, [])
-                    if isinstance(line, int)
-                ]
+                line
+                for line in file_line_map.get(path, [])
+                if isinstance(line, int)
             )
             source = source_map.get(path, "")
             if not source:
                 blocks.append(f"File: {path}\n<source unavailable>")
                 continue
             snippets = []
-            for line_text in line_numbers[:max_snippets_per_file]:
-                line_number = int(line_text)
+            for line_number in line_numbers[:max_snippets_per_file]:
                 snippets.append(
                     self._get_ctx_around_line_from_text(source, line_number, context_lines)
                 )
@@ -739,9 +771,7 @@ class InstanceComparison:
                     f = entry.get("file", "?")
                     func = entry.get("func", "?")
                     line = entry.get("line", "?")
-                    if "site-packages" in f or not (
-                        "/testbed/" in f or (isinstance(f, str) and f.endswith(".py"))
-                    ):
+                    if not isinstance(f, str) or not self._stdlib_filter.keep(f):
                         continue
                     key = (f, func)
                     if key in seen:
@@ -806,15 +836,15 @@ class InstanceComparison:
 
     @staticmethod
     def _parse_test_output(text: str) -> Outcome:
-        status = "unknown"
+        status = Status.UNKNOWN
         if re.search(r"^FAILED\b", text, flags=re.MULTILINE) or re.search(
             r"\b\d+\s+failed\b", text
         ):
-            status = "failed"
+            status = Status.FAILED
         elif re.search(r"^OK\b", text, flags=re.MULTILINE) or re.search(
             r"\b0\s+failed\b", text
         ):
-            status = "passed"
+            status = Status.PASSED
 
         failure_count: Optional[int] = None
         for match in re.finditer(r"(?:failures|errors)=(\d+)", text):
@@ -829,7 +859,7 @@ class InstanceComparison:
                 if failure_count is None
                 else max(failure_count, failed_count)
             )
-        if status == "passed":
+        if status is Status.PASSED:
             failure_count = 0
 
         ran_match = re.search(r"Ran\s+(\d+)\s+tests", text)
@@ -862,23 +892,23 @@ class InstanceComparison:
         return output_manager.test_output_file(instance_id)
 
     @staticmethod
-    def _build_verdict(baseline: Outcome, variant: VariantResult) -> str:
+    def _build_verdict(baseline: Outcome, variant: VariantResult) -> Verdict:
         if variant.run_skipped:
-            return "not_run"
+            return Verdict.NOT_RUN
         v_outcome = variant.outcome
         baseline_status = baseline.status
         variant_status = v_outcome.status
-        if variant_status in {"apply_failed", "not_run"}:
-            return "not_run"
+        if variant_status in {Status.APPLY_FAILED, Status.NOT_RUN}:
+            return Verdict.NOT_RUN
         baseline_failures = baseline.failure_count
         variant_failures = v_outcome.failure_count
-        if baseline_status != "passed" and variant_status == "passed":
-            return "fixed"
+        if baseline_status is not Status.PASSED and variant_status is Status.PASSED:
+            return Verdict.FIXED
         if isinstance(baseline_failures, int) and isinstance(variant_failures, int):
             if variant_failures < baseline_failures:
-                return "improved"
+                return Verdict.IMPROVED
             if variant_failures == baseline_failures:
-                return "unchanged"
+                return Verdict.UNCHANGED
             if variant_failures > baseline_failures:
-                return "regressed"
-        return "unknown"
+                return Verdict.REGRESSED
+        return Verdict.UNKNOWN

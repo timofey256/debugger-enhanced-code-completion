@@ -16,6 +16,7 @@ from libs.harness import (
     ComparisonConfig,
     FrameworkDetector,
     InstanceComparison,
+    Variant,
 )
 from libs.llm.connector import LLMConnector
 from libs.log import create_logger
@@ -201,14 +202,16 @@ def main() -> int:
         append_record(index, record)
         write_run_index(index_path, index)
 
-        without_status = record["variants"]["without_runtime"]["status"]
-        with_status = record["variants"]["with_runtime"]["status"]
+        without_status = record["variants"][Variant.WITHOUT_RUNTIME.value]["status"]
+        with_status = record["variants"][Variant.WITH_RUNTIME.value]["status"]
         logger.info(
-            "[%d/%d] Finished %s (without_runtime=%s, with_runtime=%s)",
+            "[%d/%d] Finished %s (%s=%s, %s=%s)",
             idx,
             total,
             instance_id,
+            Variant.WITHOUT_RUNTIME.value,
             without_status,
+            Variant.WITH_RUNTIME.value,
             with_status,
         )
 

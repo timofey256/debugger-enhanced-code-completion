@@ -23,7 +23,10 @@ from libs.harness.instance_comparison import (
     ComparisonReport,
     InstanceComparison,
     Outcome,
+    Status,
+    Variant,
     VariantResult,
+    Verdict,
 )
 
 __all__ = [
@@ -39,5 +42,8 @@ __all__ = [
     "ComparisonReport",
     "InstanceComparison",
     "Outcome",
+    "Status",
+    "Variant",
     "VariantResult",
+    "Verdict",
 ]
