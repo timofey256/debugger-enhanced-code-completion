@@ -1,9 +1,0 @@
-[
-  {
-    "success": false,
-    "instance_id": "sympy__sympy-20212",
-    "framework": "unknown",
-    "error": "Trace file not created: traces_test/sympy__sympy-20212/auto_debug.json. Tests may not have failed, or trace collection did not activate.",
-    "traceback": "Traceback (most recent call last):\n  File \"/home/tymofii/develop/debugger-enhanced-code-completion/swebench-trace-collection/swebench_integration/wrapper.py\", line 213, in run_instance_with_traces\n    raise TraceCollectionError(\n    ...<2 lines>...\n    )\nswebench_integration.wrapper.TraceCollectionError: Trace file not created: traces_test/sympy__sympy-20212/auto_debug.json. Tests may not have failed, or trace collection did not activate.\n"
-  }
-]
