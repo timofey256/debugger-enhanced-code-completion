@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, TypeVar
+from typing import Any, Dict, List, NamedTuple, Optional, TypeVar
 
 import docker
 
@@ -447,17 +447,6 @@ class InstanceComparison:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
-    @staticmethod
-    def _unique_in_order(items: Iterable[T]) -> List[T]:
-        seen = set()
-        ordered: List[T] = []
-        for item in items:
-            if item in seen:
-                continue
-            seen.add(item)
-            ordered.append(item)
-        return ordered
-
     def _collect_file_line_map(
         self, traces: List[Dict[str, Any]]
     ) -> Dict[str, List[int]]:
@@ -604,8 +593,6 @@ class InstanceComparison:
             ).strip()
             blocks.append(block)
 
-        if not blocks:
-            return "<no runtime frames captured>"
         return "\n\n".join(blocks)
 
     @staticmethod
@@ -662,27 +649,27 @@ class InstanceComparison:
 
     def _build_prompt(
         self,
-        traces: List[Dict[str, Any]],
+        traces,: List[Dict[str, Any]],
         failure_summary: str,
         testcase_source: str,
         include_runtime: bool,
         source_map: Dict[str, str],
     ) -> str:
-        first_trace = traces[0] if traces else {}
-        exception_type = str(first_trace.get("exc_type", "TestFailure"))
-        exception_msg = str(first_trace.get("message", "See failure summary"))
+        trace = traces[0] if traces else {}
+
+        exception_type = str(trace.get("exc_type", "TestFailure"))
+        exception_msg = str(trace.get("message", "See failure summary"))
 
         frames: List[Dict[str, Any]] = []
         exec_path_entries: List[Dict[str, Any]] = []
-        for trace in traces:
-            trace_frames = trace.get("frames", [])
-            if isinstance(trace_frames, list):
-                frames.extend([f for f in trace_frames if isinstance(f, dict)])
-            trace_exec_path = trace.get("exec_path", [])
-            if isinstance(trace_exec_path, list):
-                exec_path_entries.extend(
-                    [e for e in trace_exec_path if isinstance(e, dict)]
-                )
+
+        trace_frames = trace.get("frames", [])
+        frames.extend([f for f in trace_frames if isinstance(f, dict)])
+
+        trace_exec_path = trace.get("exec_path", [])
+        exec_path_entries.extend(
+            [e for e in trace_exec_path if isinstance(e, dict)]
+        )
 
         frame_context_lines = self._config.context_lines
         if include_runtime:
@@ -793,12 +780,7 @@ class InstanceComparison:
             summary_line=summary_line,
         )
 
-    def _resolve_test_output_path(
-        self,
-        run_result: RunResult,
-        output_manager: TraceOutputManager,
-        instance_id: str,
-    ) -> Path:
+    def _resolve_test_output_path(self, run_result: RunResult, output_manager: TraceOutputManager, instance_id: str) -> Path:
         if run_result.trace_path:
             trace_file = Path(run_result.trace_path)
             if trace_file.exists():
