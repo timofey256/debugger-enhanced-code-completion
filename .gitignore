@@ -18,7 +18,7 @@ apps/vscode-extension/*.vsix
 
 # Generated data — keep directory structure via .gitkeep only
 data/**
-!data/**/.gitkeep
+!data/.gitkeep
 
 # Vendored upstream sample projects (cloned locally, not tracked)
 examples/upstream-projects/
