@@ -53,4 +53,8 @@ pkgs.mkShell {
 
     vscode
   ];
+
+  shellHook = ''
+    export PYTHONPATH="$PWD:$PWD/libs:$PYTHONPATH"
+  '';
 }

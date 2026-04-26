@@ -13,34 +13,35 @@ __pycache__/
 
 # Node artifacts
 node_modules/
+apps/vscode-extension/out/
+apps/vscode-extension/*.vsix
 
-# Debugger / trace outputs (repository-wide)
-auto_debug.json
-**/auto_debug.json
-**/test_output.txt
-**/summary_trace_collection.json
+# Generated data — keep directory structure via .gitkeep only
+data/**
+!data/.gitkeep
 
-# SWE-bench run artifacts
-swebench-trace-collection/traces*/
-swebench-trace-collection/debugger_patch_comparison*/
-swebench-trace-collection/benchmark_runs/
-swebench-trace-collection/logs/
+# Vendored upstream sample projects (cloned locally, not tracked)
+examples/upstream-projects/
 
 # Local experiment artifacts
 prompt_log/
 code_completion_results/
 experiment_runs/
-backend/result/
-backend/result
 evaluation_report_*.json
 model_config_*.json
 
-# Thesis
+# Logs
+logs/
+
+# Thesis & references (separate lifecycle)
 thesis/
 references/
 
-# Other
+# OpenSpec working dirs
 openspec/
 
 # Environment
 .env
+
+# Editor / tooling
+.claude/

@@ -47,6 +47,10 @@
 
         openspec.packages.${system}.default
       ];
+
+      shellHook = ''
+        export PYTHONPATH="$PWD:$PWD/libs:$PYTHONPATH"
+      '';
     };
   };
 }
