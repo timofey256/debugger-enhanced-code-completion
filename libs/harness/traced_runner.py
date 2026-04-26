@@ -139,6 +139,7 @@ class TracedInstanceRunner:
                 num_failures=len(traces),
                 runtime=runtime,
                 test_output_path=str(test_output_path),
+                traces=traces,
             )
 
         except Exception as exc:

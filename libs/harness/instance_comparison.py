@@ -256,12 +256,7 @@ class InstanceComparison:
         instance_id = self._test_spec.instance_id
         run_result = self._baseline_runner.run(self._reference_pred, skip_patch=True)
 
-        trace_path = (
-            Path(run_result.trace_path)
-            if run_result.trace_path
-            else self._baseline_output.trace_file(instance_id)
-        )
-        traces = self._read_json_list(trace_path)
+        traces = list(run_result.traces)
 
         test_output_path = self._resolve_test_output_path(
             run_result, self._baseline_output, instance_id
@@ -463,16 +458,6 @@ class InstanceComparison:
     def _write_text(path: Path, content: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
-
-    @staticmethod
-    def _read_json_list(path: Path) -> List[Dict[str, Any]]:
-        if not path.exists():
-            return []
-        try:
-            data = json.loads(path.read_text(encoding="utf-8", errors="replace"))
-        except json.JSONDecodeError:
-            return []
-        return data if isinstance(data, list) else []
 
     @staticmethod
     def _unique_in_order(items: Iterable[T]) -> List[T]:
