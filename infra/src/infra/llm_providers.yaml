@@ -1,0 +1,31 @@
+# LLM provider configuration.
+#
+# To add a new provider, append a top-level entry under `providers:` with:
+#   base_url:    OpenAI-compatible endpoint base URL.
+#   api_key_env: Name of the .env variable holding the API key.
+#   models:      Mapping of model name -> per-model options. Empty mapping ({})
+#                means "no extra options". Supported per-model options:
+#                  reasoning_effort: string forwarded to chat.completions.create
+#                  thinking:         bool; when true, sends
+#                                    extra_body={"thinking": {"type": "enabled"}}
+
+providers:
+  deepseek:
+    base_url: "https://api.deepseek.com"
+    api_key_env: "DEEPSEEK_API_KEY"
+    models:
+      deepseek-chat: {}
+      deepseek-v4-chat:
+        reasoning_effort: "high"
+        thinking: true
+      deepseek-v4-pro:
+        reasoning_effort: "high"
+        thinking: true
+  anthropic:
+    base_url: "https://api.anthropic.com/v1/"
+    api_key_env: "ANTHROPIC_API_KEY"
+    models: {}
+  openai:
+    base_url: "https://api.openai.com/v1/"
+    api_key_env: "OPENAI_API_KEY"
+    models: {}
