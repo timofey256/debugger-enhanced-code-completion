@@ -5,6 +5,7 @@ import sys, json
 from pathlib import Path
 
 from prompts import PromptBuilder, load_prompt
+from libs.frames import Frame, default_traceback_pipeline
 
 def get_ctx_around_line(filename: str, line_nmbr: int, context_size: int) -> str:
     assert context_size > 0, "context_size must be non-negative"
@@ -39,7 +40,14 @@ def serialize_frames(frames: list[dict], context_size: int = 10) -> str:
     return "\n".join([f"Block {i}:\n{block}" for i, block in enumerate(serialized_frame_blocks)])
 
 def build_prompt(trace: dict) -> str:
-    frames = serialize_frames(trace["frames"])
+    raw_frames = trace.get("frames", []) or []
+    pipelined = [
+        f.to_json()
+        for f in default_traceback_pipeline().run(
+            Frame.from_json(d) for d in raw_frames
+        )
+    ]
+    frames = serialize_frames(pipelined)
     exception_body = (
         f"Type: {trace['exc_type']}\n"
         f"Message: {trace['message']}"

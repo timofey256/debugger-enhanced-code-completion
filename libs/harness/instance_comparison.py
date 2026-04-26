@@ -13,10 +13,10 @@ from typing import Any, Dict, Iterable, List, NamedTuple, Optional, TypeVar
 
 import docker
 
-from libs.harness.filters import PathFilter, StdlibFilter
 from libs.harness.framework_detector import FrameworkDetector
 from libs.harness.trace_output import TraceOutputManager
 from libs.harness.traced_runner import RunResult, TracedInstanceRunner
+from libs.frames import Frame, StdlibFrameFilter
 
 from libs.prompts import PromptBuilder, load_prompt
 
@@ -171,7 +171,6 @@ class InstanceComparison:
         run_id: str,
         config: ComparisonConfig,
         logger: logging.Logger,
-        stdlib_filter: Optional[PathFilter] = None,
         framework_detector: Optional[FrameworkDetector] = None,
     ):
         self._test_spec = test_spec
@@ -183,7 +182,7 @@ class InstanceComparison:
         self._run_id = run_id
         self._config = config
         self._logger = logger
-        self._stdlib_filter = stdlib_filter or StdlibFilter()
+        self._stdlib_filter = StdlibFrameFilter()
         self._framework_detector = framework_detector or FrameworkDetector()
 
         self._framework = self._framework_detector.detect(self._test_spec)
@@ -498,11 +497,11 @@ class InstanceComparison:
                         continue
                     file_path = frame.get("file")
                     line = frame.get("line")
-                    if not isinstance(file_path, str) or not self._stdlib_filter.keep(
-                        file_path
-                    ):
+                    if not isinstance(file_path, str) or not isinstance(line, int):
                         continue
-                    if not isinstance(line, int):
+                    if not self._stdlib_filter.keep(
+                        Frame(file=file_path, line=line, func=str(frame.get("func", "")))
+                    ):
                         continue
                     file_lines.setdefault(file_path, []).append(line)
 
@@ -513,11 +512,11 @@ class InstanceComparison:
                         continue
                     file_path = call.get("file")
                     line = call.get("line")
-                    if not isinstance(file_path, str) or not self._stdlib_filter.keep(
-                        file_path
-                    ):
+                    if not isinstance(file_path, str) or not isinstance(line, int):
                         continue
-                    if not isinstance(line, int):
+                    if not self._stdlib_filter.keep(
+                        Frame(file=file_path, line=line, func=str(call.get("func", "")))
+                    ):
                         continue
                     file_lines.setdefault(file_path, []).append(line)
         return file_lines
@@ -771,7 +770,12 @@ class InstanceComparison:
                     f = entry.get("file", "?")
                     func = entry.get("func", "?")
                     line = entry.get("line", "?")
-                    if not isinstance(f, str) or not self._stdlib_filter.keep(f):
+                    if not isinstance(f, str):
+                        continue
+                    line_int = line if isinstance(line, int) else 0
+                    if not self._stdlib_filter.keep(
+                        Frame(file=f, line=line_int, func=str(func))
+                    ):
                         continue
                     key = (f, func)
                     if key in seen:
