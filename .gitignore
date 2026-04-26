@@ -23,25 +23,14 @@ data/**
 # Vendored upstream sample projects (cloned locally, not tracked)
 examples/upstream-projects/
 
-# Local experiment artifacts
-prompt_log/
-code_completion_results/
-experiment_runs/
-evaluation_report_*.json
-model_config_*.json
-
 # Logs
 logs/
 
-# Thesis & references (separate lifecycle)
-thesis/
-references/
-
-# OpenSpec working dirs
-openspec/
-
-# Environment
 .env
 
-# Editor / tooling
+# tooling
+AGENTS.md
+CLAUDE.md
 .claude/
+.github/
+openspec/
