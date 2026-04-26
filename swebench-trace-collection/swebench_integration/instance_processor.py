@@ -74,34 +74,3 @@ def process_instance(
             framework=framework,
             error=str(e)
         )
-
-
-def create_traced_testspec(instance: Dict[str, Any], trace_output: Path):
-    """
-    Create TestSpec with trace collection enabled.
-
-    Args:
-        instance: SWE-bench instance dictionary
-        trace_output: Path for trace output
-
-    Returns:
-        Modified TestSpec object
-    """
-    # TODO: Implement TestSpec creation with trace hooks
-    # This will interface with SWE-bench's test_spec.py
-    pass
-
-
-def run_instance_tests(testspec):
-    """
-    Run tests for instance in Docker container.
-
-    Args:
-        testspec: TestSpec with trace collection enabled
-
-    Returns:
-        Test execution result
-    """
-    # TODO: Implement test execution
-    # This will call SWE-bench's evaluation harness
-    pass

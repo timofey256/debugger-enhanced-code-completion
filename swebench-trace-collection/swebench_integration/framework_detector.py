@@ -53,14 +53,11 @@ class FrameworkDetector:
         Returns:
             Framework name: "pytest", "unittest", "django", or "custom"
         """
-        # Check cache first
         if instance_id in self.cache:
             return self.cache[instance_id]
 
-        # Detect based on test command
         framework = self._detect_from_command(test_command)
 
-        # Cache the result
         self.cache[instance_id] = framework
         self._save_cache()
 
@@ -68,29 +65,27 @@ class FrameworkDetector:
 
     def _detect_from_command(self, test_command: Optional[str]) -> str:
         """Detect framework from test command string."""
+
+        default_framework = "pytest"
+
         if not test_command:
-            return "pytest"  # Default
+            return default_framework 
 
         command = test_command.lower()
 
-        # Check for pytest
         if "pytest" in command or "py.test" in command:
             return "pytest"
 
-        # Check for unittest
         if "unittest" in command or "python -m unittest" in command:
             return "unittest"
 
-        # Check for Django
         if "manage.py test" in command or "django" in command:
             return "django"
 
-        # Check for custom test runners
         if "bin/test" in command or "runtests.py" in command:
             return "custom"
 
-        # Default to pytest (most common in SWE-bench)
-        return "pytest"
+        return default_framework
 
     def batch_detect(self, instances: List[Dict]) -> Dict[str, str]:
         """
@@ -113,17 +108,3 @@ class FrameworkDetector:
                 results[instance_id] = framework
 
         return results
-
-    def parse_swebench_constants(self, constants_path: str) -> Dict[str, str]:
-        """
-        Parse SWE-bench constants.py to extract test commands.
-
-        Args:
-            constants_path: Path to swebench/harness/constants/python.py
-
-        Returns:
-            Mapping of repo -> test command
-        """
-        # TODO: Implement parsing of constants.py
-        # This will extract TEST_PYTEST, TEST_DJANGO, etc. and map to repos
-        return {}
