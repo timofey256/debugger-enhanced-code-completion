@@ -1,4 +1,0 @@
-You are an AI coding assistant tasked with implementing missing code based on debug information.
-
-# OVERVIEW
-Total Exceptions Found: {num_exceptions}
