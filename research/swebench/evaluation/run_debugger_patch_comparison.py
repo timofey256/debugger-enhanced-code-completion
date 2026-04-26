@@ -637,51 +637,6 @@ def run_patch_variant(
     return result
 
 
-def build_markdown_report(report: Dict[str, Any]) -> str:
-    baseline = report["baseline"]
-    no_runtime = report["without_runtime"]
-    with_runtime = report["with_runtime"]
-
-    return textwrap.dedent(
-        f"""\
-        # Debugger Patch Comparison — {report['instance_id']}
-
-        ## Baseline
-        - Framework: {report.get('framework', 'unknown')}
-        - Status: {baseline['outcome'].get('status')}
-        - Failure count: {baseline['outcome'].get('failure_count')}
-        - Summary: {baseline['outcome'].get('summary_line')}
-
-        ## Without Runtime Information
-        - Status: {no_runtime['outcome'].get('status')}
-        - Failure count: {no_runtime['outcome'].get('failure_count')}
-        - Summary: {no_runtime['outcome'].get('summary_line')}
-        - Verdict vs baseline: {report['comparison'].get('without_runtime_verdict')}
-
-        ## With Runtime Information
-        - Status: {with_runtime['outcome'].get('status')}
-        - Failure count: {with_runtime['outcome'].get('failure_count')}
-        - Summary: {with_runtime['outcome'].get('summary_line')}
-        - Verdict vs baseline: {report['comparison'].get('with_runtime_verdict')}
-
-        ## Reference SWE-bench Patch
-        ```diff
-        {report['patches']['reference_swebench']}
-        ```
-
-        ## LLM Patch (Without Runtime)
-        ```diff
-        {report['patches']['llm_without_runtime']}
-        ```
-
-        ## LLM Patch (With Runtime)
-        ```diff
-        {report['patches']['llm_with_runtime']}
-        ```
-        """
-    )
-
-
 def process_instance(
     args,
     client: docker.DockerClient,
@@ -847,13 +802,10 @@ def process_instance(
     }
 
     report_json_path = artifacts_dir / "comparison_report.json"
-    report_md_path = artifacts_dir / "comparison_report.md"
 
     write_text(report_json_path, json.dumps(report, indent=2, ensure_ascii=False))
-    write_text(report_md_path, build_markdown_report(report))
 
     logger.info("Saved report: %s", report_json_path)
-    logger.info("Saved markdown report: %s", report_md_path)
 
     return report
 
