@@ -3,7 +3,7 @@ name = "pytest-smart-debugger-backend"
 version = "0.0.3"
 description = "Backend server for Pytest Smart Debugger"
 authors = [{ name = "Tymofii Shchetilin" }]
-dependencies = [ "flask", "requests"  ]
+dependencies = [ "flask", "infra" ]
 requires-python = ">=3.8"
 
 [project.scripts]

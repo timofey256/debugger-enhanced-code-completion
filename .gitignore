@@ -41,3 +41,6 @@ references/
 
 # Other
 openspec/
+
+# Environment
+.env

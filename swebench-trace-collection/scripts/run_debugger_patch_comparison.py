@@ -29,11 +29,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TRACE_COLLECTION_ROOT = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "backend" / "src"))
+sys.path.insert(0, str(REPO_ROOT / "infra" / "src"))
 sys.path.insert(0, str(TRACE_COLLECTION_ROOT))
 sys.path.insert(0, "/home/tymofii/develop/SWE-bench")
 
-from backend.generate_prompt import _TEMPLATE as DEBUGGER_TEMPLATE
-from backend.llm_interface import LLMInterface
+from pytest_smart_debugger_server.generate_prompt import _TEMPLATE as DEBUGGER_TEMPLATE
+from infra.llm_connector import LLMConnector
 
 from swebench.harness.constants import (
     DOCKER_WORKDIR,
@@ -562,7 +564,7 @@ def build_verdict(baseline: Dict[str, Any], variant_result: Dict[str, Any]) -> s
 def run_patch_variant(
     variant_name: str,
     prompt: str,
-    llm: LLMInterface,
+    llm: LLMConnector,
     max_tokens: int,
     reference_pred: Dict[str, Any],
     model_name: str,
@@ -794,7 +796,7 @@ def process_instance(
         frame_context_lines=args.context_lines,
     )
 
-    llm = LLMInterface(model=args.model)
+    llm = LLMConnector(provider=args.provider, model=args.model)
 
     without_runtime_result = run_patch_variant(
         variant_name="without_runtime",
@@ -897,6 +899,7 @@ def parse_args() -> argparse.Namespace:
         default="./debugger_patch_comparison",
         help="Directory for run outputs and reports",
     )
+    parser.add_argument("--provider", type=str, default="deepseek")
     parser.add_argument("--model", type=str, default="deepseek-chat")
     parser.add_argument("--max_tokens", type=int, default=2500)
     parser.add_argument("--context_lines", type=int, default=8)

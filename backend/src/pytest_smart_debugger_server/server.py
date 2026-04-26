@@ -6,13 +6,22 @@ from flask import Flask, request, jsonify
 import logging
 
 from .generate_prompt import generate_prompt_as_string
-from .llm_interface import run_completion
+from infra.llm_connector import LLMConnector
 from .apply_patch import parse_unified_diff, DiffBlock
 
 PROJECT_PATH: str | None = None
 
 app = Flask(__name__)
 logger = logging.getLogger(__name__)
+
+_llm_connector: LLMConnector | None = None
+
+
+def _get_llm() -> LLMConnector:
+    global _llm_connector
+    if _llm_connector is None:
+        _llm_connector = LLMConnector(provider="deepseek", model="deepseek-chat")
+    return _llm_connector
 
 def to_jsonable(patches):
     """Convert your tuple/Path-based patches to plain JSON."""
@@ -75,7 +84,7 @@ def get_patches(project_path: str, test_name: str) -> List[DiffBlock]:
     logger.info("Generated prompt:\n%s", prompt)
 
     # query LLM
-    model_response = run_completion(prompt)
+    model_response = _get_llm().complete_code(prompt)
     logger.info("Model response:\n%s", model_response)
 
     # parse patches from the response

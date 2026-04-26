@@ -5,7 +5,7 @@ from typing import Dict, List, Any
 import json
 import time
 
-from .llm_interface import LLMInterface
+from infra.llm_connector import LLMConnector
 
 class CompletionModelBuilder:
     """
@@ -359,7 +359,7 @@ def main():
     model = CompletionModelBuilder(trace_log)
     request = model.create_llm_request()
 
-    llm = LLMInterface()
+    llm = LLMConnector(provider="deepseek", model="deepseek-chat")
     response = llm.complete_code(request)
     
     code = llm.extract_code_from_response(response)

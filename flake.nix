@@ -34,12 +34,17 @@
         pkgs.python313Packages.requests
         pkgs.python313Packages.tenacity
         pkgs.python313Packages.tqdm
+        pkgs.python313Packages.openai
+        pkgs.python313Packages.pyyaml
+
+        pkgs.openssl
         pkgs.vscode
         pkgs.claude-code
         pkgs.bash
         pkgs.github-copilot-cli
         pkgs.nodejs_24
         pkgs.docker_29
+
         openspec.packages.${system}.default
       ];
     };
