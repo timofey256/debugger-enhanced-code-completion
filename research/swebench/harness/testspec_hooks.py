@@ -16,7 +16,7 @@ def get_trace_collection_args(
     Generate Docker arguments for trace collection.
 
     Args:
-        trace_collector_dir: Path to trace_collectors module
+        trace_collector_dir: Path to libs/tracing module
         trace_output_dir: Path for output (host directory)
 
     Returns:
@@ -69,7 +69,7 @@ def get_instance_container_args(
 
     # Add trace collection if enabled
     if trace_collector_dir and trace_output_dir:
-        from swebench_integration.testspec_hooks import get_trace_collection_args
+        from research.swebench.harness.testspec_hooks import get_trace_collection_args
         args.extend(get_trace_collection_args(trace_collector_dir, trace_output_dir))
 
     return args

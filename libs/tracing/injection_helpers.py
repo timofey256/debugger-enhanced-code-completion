@@ -50,7 +50,7 @@ def setup_pythonpath(tracers_dir: str) -> str:
     Generate PYTHONPATH value that includes trace collectors.
 
     Args:
-        tracers_dir: Path to trace_collectors directory
+        tracers_dir: Path to libs/tracing directory
 
     Returns:
         PYTHONPATH string to use in Docker environment

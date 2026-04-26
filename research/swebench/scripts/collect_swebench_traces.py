@@ -11,15 +11,11 @@ import argparse
 import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-import sys
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from swebench_integration.framework_detector import FrameworkDetector
-from swebench_integration.volume_manager import TraceOutputManager
-from swebench_integration.instance_processor import process_instance
-from swebench_integration.trace_aggregator import TraceAggregator
+from research.swebench.harness.framework_detector import FrameworkDetector
+from research.swebench.harness.volume_manager import TraceOutputManager
+from research.swebench.harness.instance_processor import process_instance
+from research.swebench.harness.trace_aggregator import TraceAggregator
 
 
 def main():
@@ -41,7 +37,7 @@ def main():
 
     parser.add_argument(
         "--output-dir",
-        default="./swebench_traces",
+        default="data/traces/swebench",
         help="Output directory for traces"
     )
 

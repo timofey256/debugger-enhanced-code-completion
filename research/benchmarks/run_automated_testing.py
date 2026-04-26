@@ -228,15 +228,15 @@ class AutomatedCompletionTester:
             json.dump(config, f)
         
         try:
-            print(f"Running completion_model.py with trace log: {trace_log_path}")
+            print(f"Running trace_to_prompt with trace log: {trace_log_path}")
             result = subprocess.run(
-                [sys.executable, "completion_model.py", trace_log_path, "--config", config_path],
+                [sys.executable, "-m", "apps.backend.server_pkg.trace_to_prompt", trace_log_path, "--config", config_path],
                 capture_output=True,
                 text=True
             )
-            print(f"completion_model.py output: {result.stdout}")
+            print(f"trace_to_prompt output: {result.stdout}")
             if result.stderr:
-                print(f"completion_model.py errors: {result.stderr}")
+                print(f"trace_to_prompt errors: {result.stderr}")
             
             # Find the generated code file
             code_dir = "code_completion_results"
@@ -486,9 +486,8 @@ class AutomatedCompletionTester:
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python run_automated_testing.py <repo_path> [model_configs...]")
-        repo_path = "/home/tymofii/school/isp/debugger-enhanced-code-completion/example/flask"
-    else:
-        repo_path = sys.argv[1]
+        sys.exit(1)
+    repo_path = sys.argv[1]
     
     # Default model configurations
     model_configs = [

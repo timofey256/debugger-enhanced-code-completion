@@ -9,8 +9,9 @@ import sys
 from dataclasses import replace
 from typing import List
 
-# Add SWE-bench to path
-sys.path.insert(0, "/home/tymofii/develop/SWE-bench")
+from libs.env import require_env
+
+sys.path.insert(0, require_env("SWE_BENCH_PATH"))
 from swebench.harness.test_spec.test_spec import TestSpec
 
 

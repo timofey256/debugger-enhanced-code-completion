@@ -78,7 +78,7 @@ class TraceOutputManager:
         Get Docker mount and environment args for trace collectors.
 
         Args:
-            tracers_dir: Path to trace_collectors directory
+            tracers_dir: Path to libs/tracing directory
 
         Returns:
             Tuple of (mount_args, env_args)

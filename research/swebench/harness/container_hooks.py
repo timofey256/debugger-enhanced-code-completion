@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Optional
 import sys
 
-# Add SWE-bench to path to import necessary modules
-sys.path.insert(0, "/home/tymofii/develop/SWE-bench")
+from libs.env import require_env
+
+sys.path.insert(0, require_env("SWE_BENCH_PATH"))
 from swebench.harness.test_spec.test_spec import TestSpec
 from swebench.harness.constants import DOCKER_USER
 

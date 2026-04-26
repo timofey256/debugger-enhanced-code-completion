@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify
 import logging
 
 from .generate_prompt import generate_prompt_as_string
-from infra.llm_connector import LLMConnector
+from llm.connector import LLMConnector
 from .apply_patch import parse_unified_diff, DiffBlock
 
 PROJECT_PATH: str | None = None

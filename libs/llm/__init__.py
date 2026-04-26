@@ -1,3 +1,3 @@
-from .llm_connector import LLMConnector
+from .connector import LLMConnector
 
 __all__ = ["LLMConnector"]

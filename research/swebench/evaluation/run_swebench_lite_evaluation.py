@@ -15,19 +15,18 @@ from typing import Any, Dict, List, Tuple
 
 import docker
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-TRACE_COLLECTION_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
-sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(TRACE_COLLECTION_ROOT))
-sys.path.insert(0, "/home/tymofii/develop/SWE-bench")
+from libs.env import require_env
 
-from run_debugger_patch_comparison import process_instance
+sys.path.insert(0, require_env("SWE_BENCH_PATH"))
+
+from research.swebench.evaluation.run_debugger_patch_comparison import process_instance
 from swebench.harness.constants import KEY_INSTANCE_ID
 from swebench.harness.docker_build import build_env_images
 from swebench.harness.test_spec.test_spec import make_test_spec
 from swebench.harness.utils import get_predictions_from_file, load_swebench_dataset
-from swebench_integration.benchmark_index import (
+from research.swebench.harness.benchmark_index import (
     append_record,
     build_instance_index_record,
     finalize_run_index,
@@ -183,7 +182,7 @@ def main() -> int:
         env_image_tag="latest",
     )
 
-    trace_collector_dir = TRACE_COLLECTION_ROOT / "trace_collectors"
+    trace_collector_dir = REPO_ROOT / "libs" / "tracing"
     if not trace_collector_dir.exists():
         logger.error("Trace collector directory not found: %s", trace_collector_dir)
         return 1

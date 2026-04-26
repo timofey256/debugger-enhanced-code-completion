@@ -10,7 +10,7 @@ Usage:
         --dataset princeton-nlp/SWE-bench_Lite \
         --instance_ids django__django-11583 \
         --predictions_path gold \
-        --output_dir ./traces
+        --output_dir data/traces/swebench
 """
 
 import argparse
@@ -20,9 +20,9 @@ import logging
 import sys
 from pathlib import Path
 
-# Add SWE-bench to path
-sys.path.insert(0, "/home/tymofii/develop/SWE-bench")
-sys.path.insert(0, str(Path(__file__).parent.parent))  # Add swebench-trace-collection to path
+from libs.env import require_env
+
+sys.path.insert(0, require_env("SWE_BENCH_PATH"))
 
 from swebench.harness.utils import (
     load_swebench_dataset,
@@ -32,7 +32,7 @@ from swebench.harness.test_spec.test_spec import make_test_spec
 from swebench.harness.docker_build import build_env_images
 from swebench.harness.constants import KEY_INSTANCE_ID
 
-from swebench_integration.wrapper import run_instance_with_traces
+from research.swebench.harness.wrapper import run_instance_with_traces
 
 
 def setup_logging(verbose: bool = False):
@@ -84,7 +84,7 @@ def main():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="./traces",
+        default="data/traces/swebench",
         help="Output directory for trace files",
     )
 
@@ -138,7 +138,8 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    trace_collector_dir = Path(__file__).parent.parent / "trace_collectors"
+    # libs/tracing/ is the canonical home for trace collectors
+    trace_collector_dir = Path(__file__).resolve().parents[3] / "libs" / "tracing"
     if not trace_collector_dir.exists():
         logger.error(f"Trace collector directory not found: {trace_collector_dir}")
         return 1

@@ -24,18 +24,14 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import docker
 
-# Add repository roots to import path
-REPO_ROOT = Path(__file__).resolve().parents[2]
-TRACE_COLLECTION_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
-sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(REPO_ROOT / "backend" / "src"))
-sys.path.insert(0, str(REPO_ROOT / "infra" / "src"))
-sys.path.insert(0, str(TRACE_COLLECTION_ROOT))
-sys.path.insert(0, "/home/tymofii/develop/SWE-bench")
+from libs.env import require_env
 
-from pytest_smart_debugger_server.generate_prompt import _TEMPLATE as DEBUGGER_TEMPLATE
-from infra.llm_connector import LLMConnector
+sys.path.insert(0, require_env("SWE_BENCH_PATH"))
+
+from apps.backend.server_pkg.generate_prompt import _TEMPLATE as DEBUGGER_TEMPLATE
+from llm.connector import LLMConnector
 
 from swebench.harness.constants import (
     DOCKER_WORKDIR,
@@ -48,7 +44,7 @@ from swebench.harness.docker_build import build_env_images
 from swebench.harness.test_spec.test_spec import make_test_spec
 from swebench.harness.utils import get_predictions_from_file, load_swebench_dataset
 
-from swebench_integration.wrapper import run_instance_with_traces
+from research.swebench.harness.wrapper import run_instance_with_traces
 
 STRICT_PATCH_REQUIREMENTS = textwrap.dedent(
     """\
@@ -920,7 +916,7 @@ def main() -> int:
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    trace_collector_dir = TRACE_COLLECTION_ROOT / "trace_collectors"
+    trace_collector_dir = REPO_ROOT / "libs" / "tracing"
     if not trace_collector_dir.exists():
         logger.error("Trace collector directory not found: %s", trace_collector_dir)
         return 1

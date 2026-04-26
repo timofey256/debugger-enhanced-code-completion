@@ -5,7 +5,7 @@ from typing import Dict, List, Any
 import json
 import time
 
-from infra.llm_connector import LLMConnector
+from llm.connector import LLMConnector
 
 class CompletionModelBuilder:
     """
@@ -340,13 +340,12 @@ def main():
     Process debug trace log and create an LLM completion request.
     
     Usage:
-        python completion_model.py /path/to/trace_log.json
+        python -m apps.backend.server_pkg.trace_to_prompt /path/to/trace_log.json
     """
     if len(sys.argv) < 2:
-        print("Usage: python completion_model.py /path/to/trace_log.json")
+        print("Usage: python -m apps.backend.server_pkg.trace_to_prompt /path/to/trace_log.json")
         sys.exit(1)
     
-    #trace_log_path = "/home/tymofii/school/isp/debugger-enhanced-code-completion/experiment_runs/trace_test_cli.py_test_help_echo_exception_1744640679.json" 
     trace_log_path = sys.argv[1] 
     
     try:

@@ -118,9 +118,11 @@ def generate_prompt_as_string(project_path: str, test_name: str) -> str | None:
 def main(argv: list[str] = sys.argv[1:]) -> None:
     src = argv[0] if argv else None
     all_traces = read_json(src)
-    trace = all_traces[0] 
+    trace = all_traces[0]
     prompt = build_prompt(trace)
-    with open("/home/tymofii/school/isp/debugger-enhanced-code-completion/prompt_log/prompt.txt", "w") as f:
+    out_path = Path(argv[1]) if len(argv) > 1 else Path("data/traces/prompt.txt")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w") as f:
         f.write(prompt)
 
 if __name__ == "__main__":
