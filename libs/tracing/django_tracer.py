@@ -13,6 +13,7 @@ _current_exec_tracer = None
 class _ExecutionPathTracer:
     def __init__(self):
         self.called_functions = []
+        self.executed_frames = []
 
     def __call__(self, frame, event, arg):
         if event == "call":
@@ -21,22 +22,21 @@ class _ExecutionPathTracer:
                 "func": frame.f_code.co_name,
                 "line": frame.f_lineno,
             })
-        return None
+            return self
+        if event == "return":
+            self.executed_frames.append(
+                frame_to_raw_dict(frame, frame.f_lineno)
+            )
+        return self
 
 
-def _capture_from_live_tb(test, err, exec_path=None):
-    exc_type, exc_value, exc_tb = err
-    frames = []
-    tb = exc_tb
-    while tb:
-        frames.append(frame_to_raw_dict(tb.tb_frame, tb.tb_lineno))
-        tb = tb.tb_next
-
+def _capture_from_live_tb(test, err, exec_path=None, executed_frames=None):
+    exc_type, exc_value, _ = err
     _trace_store.append({
         "nodeid": str(test),
         "exc_type": exc_type.__name__,
         "message": str(exc_value),
-        "frames": frames,
+        "frames": executed_frames or [],
         "exec_path": exec_path or [],
     })
 
@@ -68,19 +68,22 @@ def inject_django_tracer():
         def wrapped_addError(self, test, err):
             if err and err[2] is not None:
                 exec_path = _current_exec_tracer.called_functions if _current_exec_tracer else []
-                _capture_from_live_tb(test, err, exec_path)
+                executed_frames = _current_exec_tracer.executed_frames if _current_exec_tracer else []
+                _capture_from_live_tb(test, err, exec_path, executed_frames)
             original_addError(self, test, err)
 
         def wrapped_addFailure(self, test, err):
             if err and err[2] is not None:
                 exec_path = _current_exec_tracer.called_functions if _current_exec_tracer else []
-                _capture_from_live_tb(test, err, exec_path)
+                executed_frames = _current_exec_tracer.executed_frames if _current_exec_tracer else []
+                _capture_from_live_tb(test, err, exec_path, executed_frames)
             original_addFailure(self, test, err)
 
         def wrapped_addSubTest(self, test, subtest, err):
             if err is not None and err[2] is not None:
                 exec_path = _current_exec_tracer.called_functions if _current_exec_tracer else []
-                _capture_from_live_tb(subtest, err, exec_path)
+                executed_frames = _current_exec_tracer.executed_frames if _current_exec_tracer else []
+                _capture_from_live_tb(subtest, err, exec_path, executed_frames)
             original_addSubTest(self, test, subtest, err)
 
         def wrapped_stopTestRun(self):

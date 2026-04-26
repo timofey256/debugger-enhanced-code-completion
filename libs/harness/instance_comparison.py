@@ -16,7 +16,6 @@ import docker
 from libs.harness.framework_detector import FrameworkDetector
 from libs.harness.trace_output import TraceOutputManager
 from libs.harness.traced_runner import RunResult, TracedInstanceRunner
-from libs.frames import Frame, StdlibFrameFilter
 
 from libs.prompts import PromptBuilder, load_prompt
 
@@ -155,7 +154,6 @@ class _Prompts(NamedTuple):
     with_: str
     failure_summary: str
     testcase_source: str
-    related_context: str
 
 
 class InstanceComparison:
@@ -182,7 +180,6 @@ class InstanceComparison:
         self._run_id = run_id
         self._config = config
         self._logger = logger
-        self._stdlib_filter = StdlibFrameFilter()
         self._framework_detector = framework_detector or FrameworkDetector()
 
         self._framework = self._framework_detector.detect(self._test_spec)
@@ -293,18 +290,11 @@ class InstanceComparison:
             baseline.source_map,
             self._config.test_context_lines,
         )
-        related_context = self._render_related_source_context(
-            baseline.selected_files,
-            baseline.file_line_map,
-            baseline.source_map,
-            self._config.context_lines,
-        )
 
         without = self._build_prompt(
             traces=baseline.traces,
             failure_summary=failure_summary,
             testcase_source=testcase_source,
-            related_context=related_context,
             include_runtime=False,
             source_map=baseline.source_map,
         )
@@ -312,7 +302,6 @@ class InstanceComparison:
             traces=baseline.traces,
             failure_summary=failure_summary,
             testcase_source=testcase_source,
-            related_context=related_context,
             include_runtime=True,
             source_map=baseline.source_map,
         )
@@ -321,7 +310,6 @@ class InstanceComparison:
             with_=with_,
             failure_summary=failure_summary,
             testcase_source=testcase_source,
-            related_context=related_context,
         )
 
     def _run_variant(
@@ -478,31 +466,15 @@ class InstanceComparison:
             frames = trace.get("frames", [])
             if isinstance(frames, list):
                 for frame in frames:
-                    if not isinstance(frame, dict):
-                        continue
-                    file_path = frame.get("file")
-                    line = frame.get("line")
-                    if not isinstance(file_path, str) or not isinstance(line, int):
-                        continue
-                    if not self._stdlib_filter.keep(
-                        Frame(file=file_path, line=line, func=str(frame.get("func", "")))
-                    ):
-                        continue
+                    file_path = frame["file"]
+                    line = frame["line"]
                     file_lines.setdefault(file_path, []).append(line)
 
             exec_path = trace.get("exec_path", [])
             if isinstance(exec_path, list):
                 for call in exec_path:
-                    if not isinstance(call, dict):
-                        continue
-                    file_path = call.get("file")
-                    line = call.get("line")
-                    if not isinstance(file_path, str) or not isinstance(line, int):
-                        continue
-                    if not self._stdlib_filter.keep(
-                        Frame(file=file_path, line=line, func=str(call.get("func", "")))
-                    ):
-                        continue
+                    file_path = call["file"]
+                    line = call["line"]
                     file_lines.setdefault(file_path, []).append(line)
         return file_lines
 
@@ -688,45 +660,14 @@ class InstanceComparison:
         snippet = self._get_ctx_around_line_from_text(source, focus_line, context_lines)
         return f"Test file: {test_file}\n{snippet}"
 
-    def _render_related_source_context(
-        self,
-        selected_files: List[str],
-        file_line_map: Dict[str, List[int]],
-        source_map: Dict[str, str],
-        context_lines: int,
-        max_snippets_per_file: int = 2,
-    ) -> str:
-        blocks: List[str] = []
-        for path in selected_files:
-            line_numbers = self._unique_in_order(
-                line
-                for line in file_line_map.get(path, [])
-                if isinstance(line, int)
-            )
-            source = source_map.get(path, "")
-            if not source:
-                blocks.append(f"File: {path}\n<source unavailable>")
-                continue
-            snippets = []
-            for line_number in line_numbers[:max_snippets_per_file]:
-                snippets.append(
-                    self._get_ctx_around_line_from_text(source, line_number, context_lines)
-                )
-            if not snippets:
-                snippets.append(self._get_ctx_around_line_from_text(source, 1, context_lines))
-            blocks.append(f"File: {path}\n" + "\n---\n".join(snippets))
-        return "\n\n".join(blocks) if blocks else "<no related source context available>"
-
     def _build_prompt(
         self,
         traces: List[Dict[str, Any]],
         failure_summary: str,
         testcase_source: str,
-        related_context: str,
         include_runtime: bool,
         source_map: Dict[str, str],
     ) -> str:
-        instance_id = self._test_spec.instance_id
         first_trace = traces[0] if traces else {}
         exception_type = str(first_trace.get("exc_type", "TestFailure"))
         exception_msg = str(first_trace.get("message", "See failure summary"))
@@ -752,16 +693,9 @@ class InstanceComparison:
                 ep_lines = []
                 seen = set()
                 for entry in exec_path_entries:
-                    f = entry.get("file", "?")
-                    func = entry.get("func", "?")
-                    line = entry.get("line", "?")
-                    if not isinstance(f, str):
-                        continue
-                    line_int = line if isinstance(line, int) else 0
-                    if not self._stdlib_filter.keep(
-                        Frame(file=f, line=line_int, func=str(func))
-                    ):
-                        continue
+                    f = entry["file"]
+                    func = entry["func"]
+                    line = entry["line"]
                     key = (f, func)
                     if key in seen:
                         continue
@@ -774,25 +708,16 @@ class InstanceComparison:
         else:
             runtime_trace = "Runtime trace intentionally omitted for this run."
 
-        prompt_prefix_body = (
-            f"Repository instance: {instance_id}\n\n"
-            f"## Failure summary\n{failure_summary}\n\n"
-            f"## Testcase source code\n{testcase_source}\n\n"
-            f"## Related source context (small)\n{related_context}"
-        )
-        exception_body = f"Type: {exception_type}\nMessage: {exception_msg}"
-
         return (
             PromptBuilder()
-            .add_section("context", prompt_prefix_body)
             .add_section("intro", load_prompt("debugger/intro.txt").rstrip("\n"))
-            .add_section("exception", exception_body)
-            .add_section("runtime_trace", runtime_trace)
             .add_section("instructions", load_prompt("debugger/instructions.txt").rstrip("\n"))
-            .add_section(
-                "strict_patch_requirements",
-                load_prompt("swebench/strict_patch_requirements.txt").rstrip("\n"),
-            )
+            .add_section("strict_patch_requirements", load_prompt("swebench/strict_patch_requirements.txt").rstrip("\n"))
+            .add_section("failure_summary", failure_summary)
+            .add_section("testcase_source", testcase_source)
+            .add_section("exception_type", exception_type)
+            .add_section("exception_body", exception_msg)
+            .add_section("runtime_trace", runtime_trace)
             .build()
         )
 

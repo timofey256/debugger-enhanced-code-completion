@@ -55,9 +55,14 @@ class RunResult:
     error: Optional[str] = None
     traceback: Optional[str] = None
     test_output_path: Optional[str] = None
+    traces: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v for k, v in self.__dict__.items() if v is not None}
+        return {
+            k: v
+            for k, v in self.__dict__.items()
+            if v is not None and k != "traces"
+        }
 
 
 class TracedInstanceRunner:

@@ -20,6 +20,7 @@ def pytest_addoption(parser):
 class _ExecutionPathTracer:
     def __init__(self):
         self.called_functions = []
+        self.executed_frames = []
 
     def __call__(self, frame, event, arg):
         if event == "call":
@@ -28,7 +29,12 @@ class _ExecutionPathTracer:
                 "func": frame.f_code.co_name,
                 "line": frame.f_lineno,
             })
-        return None
+            return self
+        if event == "return":
+            self.executed_frames.append(
+                frame_to_raw_dict(frame, frame.f_lineno)
+            )
+        return self
 
 
 def pytest_configure(config):
@@ -45,6 +51,7 @@ def pytest_runtest_call(item):
     finally:
         sys.settrace(old_trace)
     item._exec_path = tracer.called_functions
+    item._executed_frames = tracer.executed_frames
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -56,17 +63,11 @@ def pytest_runtest_makereport(item, call):
         return
 
     excinfo = call.excinfo
-    frames = []
-    tb = excinfo.tb
-    while tb:
-        frames.append(frame_to_raw_dict(tb.tb_frame, tb.tb_lineno))
-        tb = tb.tb_next
-
     item.config._auto_debug_store.append({
         "nodeid": item.nodeid,
         "exc_type": excinfo.type.__name__,
         "message": str(excinfo.value),
-        "frames": frames,
+        "frames": getattr(item, "_executed_frames", []),
         "exec_path": getattr(item, "_exec_path", []),
     })
 
