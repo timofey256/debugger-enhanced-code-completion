@@ -6,6 +6,7 @@ import json
 import time
 
 from llm.connector import LLMConnector
+from prompts import PromptBuilder, load_prompt
 
 class CompletionModelBuilder:
     """
@@ -243,68 +244,42 @@ class CompletionModelBuilder:
             Formatted string ready to send to the LLM
         """
         context = self.build_completion_request(include_all_exceptions)
-        
+
         if "error" in context:
             return f"Error preparing LLM request: {context['error']}"
-        
-        # Format the request as a clear prompt for the LLM
-        prompt = f"""
-You are an AI coding assistant tasked with implementing missing code based on debug information.
 
-# OVERVIEW
-Total Exceptions Found: {context['num_exceptions']}
+        builder = PromptBuilder()
+        builder.add_section(
+            "overview",
+            load_prompt("trace_to_prompt/overview.txt")
+            .rstrip("\n")
+            .format(num_exceptions=context["num_exceptions"]),
+        )
 
-"""
-        
-        # Add each exception's details
-        for i, exception in enumerate(context['exceptions']):
-            prompt += f"""
-# EXCEPTION {i+1} INFORMATION
-Type: {exception['exception_type']}
-Message: {exception['exception_message']}
+        exception_block_template = load_prompt("trace_to_prompt/exception_block.txt").rstrip("\n")
+        for i, exception in enumerate(context["exceptions"]):
+            block = exception_block_template.format(
+                index=i + 1,
+                exception_type=exception["exception_type"],
+                exception_message=exception["exception_message"],
+                source_code=exception["source_code"],
+                traceback=exception["traceback"],
+                execution_context=exception["execution_context"],
+                relevant_variables=json.dumps(exception["relevant_variables"], indent=2),
+                class_context=json.dumps(exception.get("class_context", {}), indent=2),
+            )
+            builder.add_section(f"exception_{i + 1}", block)
 
-## FAILING CODE - EXCEPTION {i+1}
-```python
-{exception['source_code']}
-```
+        builder.add_section(
+            "all_related_code",
+            self._format_related_code(context["all_related_code"]),
+        )
+        builder.add_section(
+            "closing_instructions",
+            load_prompt("trace_to_prompt/closing_instructions.txt").rstrip("\n"),
+        )
 
-## TRACEBACK - EXCEPTION {i+1}
-```
-{exception['traceback']}
-```
-
-## EXECUTION CONTEXT - EXCEPTION {i+1}
-```
-{exception['execution_context']}
-```
-
-## VARIABLE VALUES AT EXCEPTION TIME - EXCEPTION {i+1}
-```
-{json.dumps(exception['relevant_variables'], indent=2)}
-```
-
-## CLASS API CONTEXT - EXCEPTION {i+1}
-```
-{json.dumps(exception.get('class_context', {}), indent=2)}
-```
-
-"""
-        
-        prompt += f"""
-# ALL RELATED CODE FROM CALL STACKS
-{self._format_related_code(context['all_related_code'])}
-
-Based on the information above, please:
-1. Identify all functions that need to be implemented (including those with NotImplementedError)
-2. Provide a complete implementation of ALL functions that would pass the tests
-3. Make sure to implement ALL functions, not just the ones that had exceptions
-4. Explain your reasoning for the implementations
-
-```python
-# Your implementation here
-```
-"""
-        return prompt
+        return builder.build()
     
     def _format_related_code(self, related_code: Dict[str, str]) -> str:
         """Format the related code sections for the LLM prompt."""
