@@ -51,7 +51,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--split", type=str, default="test")
     parser.add_argument("--instance_ids", nargs="+", type=str)
     parser.add_argument("--predictions_path", type=str, default="gold")
-    parser.add_argument("--output_dir", type=str, default="./benchmark_runs")
+    parser.add_argument("--output_dir", type=str, default="./output/benchmark-runs")
     parser.add_argument("--run_id", type=str, default=None)
 
     # per-instance comparison args

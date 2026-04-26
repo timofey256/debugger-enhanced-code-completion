@@ -239,7 +239,7 @@ class AutomatedCompletionTester:
                 print(f"trace_to_prompt errors: {result.stderr}")
             
             # Find the generated code file
-            code_dir = "code_completion_results"
+            code_dir = "output/code_completion_results"
             if not os.path.exists(code_dir):
                 print(f"Code completion directory {code_dir} does not exist")
                 return None

@@ -292,7 +292,7 @@ class CompletionModelBuilder:
             
         return "\n\n".join(sections)
 
-def log_prompt(request, prompt_logged_dir="prompt_log"):
+def log_prompt(request, prompt_logged_dir="output/prompt_log"):
     timestamp = int(time.time())
 
     os.makedirs(prompt_logged_dir, exist_ok=True)
@@ -301,7 +301,7 @@ def log_prompt(request, prompt_logged_dir="prompt_log"):
     with open(prompt_logged_path, 'w') as f:
         f.write(request)
 
-def log_code_completion(request, code_completion_dir="code_completion_results"):
+def log_code_completion(request, code_completion_dir="output/code_completion_results"):
     timestamp = int(time.time())
 
     os.makedirs(code_completion_dir, exist_ok=True)

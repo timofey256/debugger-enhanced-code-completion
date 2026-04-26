@@ -68,7 +68,7 @@ def analyze_traces(trace_file):
     print(f"\n{'='*70}\n")
 
 if __name__ == "__main__":
-    trace_file = Path("test_data/jsonschema/auto_debug.json")
+    trace_file = Path("output/traces/jsonschema/auto_debug.json")
     if trace_file.exists():
         analyze_traces(trace_file)
     else:

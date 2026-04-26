@@ -876,7 +876,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="./debugger_patch_comparison",
+        default="./output/debugger-patch-comparison",
         help="Directory for run outputs and reports",
     )
     parser.add_argument("--provider", type=str, default="deepseek")

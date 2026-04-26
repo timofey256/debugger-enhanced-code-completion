@@ -1,31 +1,22 @@
-# Python packaging
+# defaults 
 *.egg-info/
 dist/
 build/
 __pycache__/
 *.pyc
-
-# Python tooling caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .venv/
-
-# Node artifacts
 node_modules/
-apps/vscode-extension/out/
-apps/vscode-extension/*.vsix
 
-# Generated data — keep directory structure via .gitkeep only
-data/**
-!data/.gitkeep
+# generated outputs
+output/
 
-# Vendored upstream sample projects (cloned locally, not tracked)
+# sample projects for tests 
 examples/upstream-projects/
 
-# Logs
 logs/
-
 .env
 
 # tooling

@@ -72,7 +72,7 @@ def main(argv: list[str] = sys.argv[1:]) -> None:
     all_traces = read_json(src)
     trace = all_traces[0]
     prompt = build_prompt(trace)
-    out_path = Path(argv[1]) if len(argv) > 1 else Path("data/traces/prompt.txt")
+    out_path = Path(argv[1]) if len(argv) > 1 else Path("output/traces/prompt.txt")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
         f.write(prompt)

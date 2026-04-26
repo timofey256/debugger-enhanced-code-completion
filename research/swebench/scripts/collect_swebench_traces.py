@@ -37,7 +37,7 @@ def main():
 
     parser.add_argument(
         "--output-dir",
-        default="data/traces/swebench",
+        default="output/traces/swebench",
         help="Output directory for traces"
     )
 
