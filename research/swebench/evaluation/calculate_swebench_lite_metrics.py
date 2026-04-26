@@ -11,6 +11,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List
 
+from libs.harness import Status, Variant
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -49,14 +51,14 @@ def compute_variant_metrics(records: List[Dict[str, Any]], variant_name: str) ->
         if not isinstance(variant, dict):
             continue
 
-        status = str(variant.get("status", "unknown"))
+        status = str(variant.get("status", Status.UNKNOWN.value))
         status_counts[status] += 1
 
-        if status != "passed":
+        if status != Status.PASSED.value:
             reason = variant.get("failure_reason") or "unknown"
             reason_counts[str(reason)] += 1
 
-    success_count = status_counts.get("passed", 0)
+    success_count = status_counts.get(Status.PASSED.value, 0)
     failure_count = max(total - success_count, 0)
     success_rate = (success_count / total) if total else 0.0
     failure_rate = (failure_count / total) if total else 0.0
@@ -84,8 +86,12 @@ def compute_metrics(index: Dict[str, Any]) -> Dict[str, Any]:
         "model": index.get("model"),
         "created_at": index.get("created_at"),
         "completed_at": index.get("completed_at"),
-        "without_runtime": compute_variant_metrics(records, "without_runtime"),
-        "with_runtime": compute_variant_metrics(records, "with_runtime"),
+        Variant.WITHOUT_RUNTIME.value: compute_variant_metrics(
+            records, Variant.WITHOUT_RUNTIME.value
+        ),
+        Variant.WITH_RUNTIME.value: compute_variant_metrics(
+            records, Variant.WITH_RUNTIME.value
+        ),
     }
 
 
@@ -95,7 +101,7 @@ def print_summary(metrics: Dict[str, Any]) -> None:
     print(f"Model: {metrics.get('model')}")
     print("")
 
-    for variant_name in ("without_runtime", "with_runtime"):
+    for variant_name in (Variant.WITHOUT_RUNTIME.value, Variant.WITH_RUNTIME.value):
         variant = metrics.get(variant_name, {})
         print(f"== {variant_name} ==")
         print(f"Total instances: {variant.get('total_instances')}")
