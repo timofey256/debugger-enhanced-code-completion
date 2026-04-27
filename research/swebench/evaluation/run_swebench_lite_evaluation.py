@@ -117,7 +117,6 @@ def main() -> int:
     logger.info("Run ID: %s", run_id)
     logger.info("Run root: %s", run_root)
     logger.info("Logs file: %s", log_path)
-    logger.info("Tip: tail -f %s", log_path)
 
     logger.info("Loading dataset: %s", args.dataset)
     dataset = load_swebench_dataset(args.dataset, args.split)

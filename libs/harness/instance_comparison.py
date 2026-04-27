@@ -4,17 +4,22 @@ import json
 import logging
 import re
 import shlex
-import textwrap
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, TypeVar
+from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple, TypeVar
 
 import docker
 
-from libs.harness.filters import PathFilter, StdlibFilter
+from libs.frames import (
+    ExecutionPathSerializer,
+    Frame,
+    FrameSerializer,
+    select_most_informative_trace,
+)
 from libs.harness.framework_detector import FrameworkDetector
+from libs.harness.io_utils import read_text, render_source_context, write_text
 from libs.harness.trace_output import TraceOutputManager
 from libs.harness.traced_runner import RunResult, TracedInstanceRunner
 
@@ -141,7 +146,7 @@ class ComparisonReport:
 
 class _Baseline(NamedTuple):
     run_result: RunResult
-    traces: List[Dict[str, Any]]
+    trace: Mapping[str, Any]
     test_output_path: Path
     test_output: str
     outcome: Outcome
@@ -150,12 +155,23 @@ class _Baseline(NamedTuple):
     source_map: Dict[str, str]
 
 
+def _trace_frames(trace: Mapping[str, Any]) -> Tuple[Frame, ...]:
+    return tuple(
+        f for f in (Frame.from_raw(d) for d in trace.get("frames", [])) if f is not None
+    )
+
+
+def _trace_exec_path(trace: Mapping[str, Any]) -> Tuple[Frame, ...]:
+    return tuple(
+        f for f in (Frame.from_raw(d) for d in trace.get("exec_path", [])) if f is not None
+    )
+
+
 class _Prompts(NamedTuple):
     without: str
     with_: str
     failure_summary: str
     testcase_source: str
-    related_context: str
 
 
 class InstanceComparison:
@@ -171,7 +187,6 @@ class InstanceComparison:
         run_id: str,
         config: ComparisonConfig,
         logger: logging.Logger,
-        stdlib_filter: Optional[PathFilter] = None,
         framework_detector: Optional[FrameworkDetector] = None,
     ):
         self._test_spec = test_spec
@@ -183,7 +198,6 @@ class InstanceComparison:
         self._run_id = run_id
         self._config = config
         self._logger = logger
-        self._stdlib_filter = stdlib_filter or StdlibFilter()
         self._framework_detector = framework_detector or FrameworkDetector()
 
         self._framework = self._framework_detector.detect(self._test_spec)
@@ -221,12 +235,12 @@ class InstanceComparison:
 
     def run(self) -> ComparisonReport:
         instance_id = self._test_spec.instance_id
-        self._logger.info("\n%s", "=" * 70)
+        self._logger.info("%s", "=" * 70)
         self._logger.info("Processing debugger comparison for %s", instance_id)
         self._logger.info("%s", "=" * 70)
 
         reference_patch = str(self._reference_pred.get(KEY_PREDICTION, ""))
-        self._write_text(self._artifacts_dir / "reference_patch.diff", reference_patch)
+        write_text(self._artifacts_dir / "reference_patch.diff", reference_patch)
 
         baseline = self._collect_baseline()
         prompts = self._build_prompts(baseline)
@@ -247,7 +261,7 @@ class InstanceComparison:
         report = self._build_report(baseline, without, with_, reference_patch)
 
         report_path = self._artifacts_dir / "comparison_report.json"
-        self._write_text(
+        write_text(
             report_path, json.dumps(report.to_dict(), indent=2, ensure_ascii=False)
         )
         self._logger.info("Saved report: %s", report_path)
@@ -257,32 +271,23 @@ class InstanceComparison:
         instance_id = self._test_spec.instance_id
         run_result = self._baseline_runner.run(self._reference_pred, skip_patch=True)
 
-        trace_path = (
-            Path(run_result.trace_path)
-            if run_result.trace_path
-            else self._baseline_output.trace_file(instance_id)
-        )
-        traces = self._read_json_list(trace_path)
+        trace = select_most_informative_trace(list(run_result.traces))
 
-        test_output_path = self._resolve_test_output_path(
-            run_result, self._baseline_output, instance_id
-        )
-        test_output = self._read_text(test_output_path)
+        test_output_path = self._resolve_test_output_path(run_result, self._baseline_output, instance_id)
+        test_output = read_text(test_output_path)
         outcome = self._parse_test_output(test_output)
 
-        file_line_map = self._collect_file_line_map(traces)
-        selected_files = self._select_context_files(
-            file_line_map, self._config.max_context_files
-        )
+        all_frames = _trace_frames(trace) + _trace_exec_path(trace)
+        file_line_map = self._collect_file_line_map(all_frames)
+        selected_files = self._select_context_files(file_line_map, self._config.max_context_files)
+
         all_trace_files = list(file_line_map.keys())
         files_to_read = list(dict.fromkeys(selected_files + all_trace_files))
-        source_map = self._read_files_from_image(
-            self._test_spec.instance_image_key, files_to_read
-        )
+        source_map = self._read_files_from_image(self._test_spec.instance_image_key, files_to_read)
 
         return _Baseline(
             run_result=run_result,
-            traces=traces,
+            trace=trace,
             test_output_path=test_output_path,
             test_output=test_output,
             outcome=outcome,
@@ -292,33 +297,25 @@ class InstanceComparison:
         )
 
     def _build_prompts(self, baseline: _Baseline) -> _Prompts:
-        failure_summary = self._summarize_failures(baseline.traces, baseline.test_output)
+        failure_summary = self._summarize_failures(baseline.trace, baseline.test_output)
         testcase_source = self._render_testcase_source(
             baseline.file_line_map,
             baseline.selected_files,
             baseline.source_map,
             self._config.test_context_lines,
         )
-        related_context = self._render_related_source_context(
-            baseline.selected_files,
-            baseline.file_line_map,
-            baseline.source_map,
-            self._config.context_lines,
-        )
 
         without = self._build_prompt(
-            traces=baseline.traces,
+            trace=baseline.trace,
             failure_summary=failure_summary,
             testcase_source=testcase_source,
-            related_context=related_context,
             include_runtime=False,
             source_map=baseline.source_map,
         )
         with_ = self._build_prompt(
-            traces=baseline.traces,
+            trace=baseline.trace,
             failure_summary=failure_summary,
             testcase_source=testcase_source,
-            related_context=related_context,
             include_runtime=True,
             source_map=baseline.source_map,
         )
@@ -327,7 +324,6 @@ class InstanceComparison:
             with_=with_,
             failure_summary=failure_summary,
             testcase_source=testcase_source,
-            related_context=related_context,
         )
 
     def _run_variant(
@@ -342,13 +338,13 @@ class InstanceComparison:
         response_path = self._artifacts_dir / f"response_{variant_name}.txt"
         patch_path = self._artifacts_dir / f"patch_{variant_name}.diff"
 
-        self._write_text(prompt_path, prompt)
+        write_text(prompt_path, prompt)
 
         response_text = self._llm.complete_code(prompt, max_tokens=self._config.max_tokens)
-        self._write_text(response_path, response_text)
+        write_text(response_path, response_text)
 
         patch_text = self._extract_unified_diff(response_text)
-        self._write_text(patch_path, patch_text)
+        write_text(patch_path, patch_text)
 
         if not patch_text.strip():
             return VariantResult(
@@ -397,7 +393,7 @@ class InstanceComparison:
         test_output_path = self._resolve_test_output_path(
             run_result, output_manager, instance_id
         )
-        test_output_text = self._read_text(test_output_path)
+        test_output_text = read_text(test_output_path)
         outcome = self._parse_test_output(test_output_text)
 
         return VariantResult(
@@ -428,7 +424,7 @@ class InstanceComparison:
                 else self._baseline_output.trace_file(instance_id)
             ),
             "test_output_path": str(baseline.test_output_path),
-            "trace_count": len(baseline.traces),
+            "trace_count": 1 if baseline.trace else 0,
             "outcome": baseline.outcome.to_dict(),
         }
         comparison = {
@@ -455,71 +451,12 @@ class InstanceComparison:
         )
 
     @staticmethod
-    def _read_text(path: Path) -> str:
-        return (
-            path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
-        )
-
-    @staticmethod
-    def _write_text(path: Path, content: str) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
-
-    @staticmethod
-    def _read_json_list(path: Path) -> List[Dict[str, Any]]:
-        if not path.exists():
-            return []
-        try:
-            data = json.loads(path.read_text(encoding="utf-8", errors="replace"))
-        except json.JSONDecodeError:
-            return []
-        return data if isinstance(data, list) else []
-
-    @staticmethod
-    def _unique_in_order(items: Iterable[T]) -> List[T]:
-        seen = set()
-        ordered: List[T] = []
-        for item in items:
-            if item in seen:
-                continue
-            seen.add(item)
-            ordered.append(item)
-        return ordered
-
     def _collect_file_line_map(
-        self, traces: List[Dict[str, Any]]
+        frames: Iterable[Frame],
     ) -> Dict[str, List[int]]:
         file_lines: Dict[str, List[int]] = {}
-        for trace in traces:
-            frames = trace.get("frames", [])
-            if isinstance(frames, list):
-                for frame in frames:
-                    if not isinstance(frame, dict):
-                        continue
-                    file_path = frame.get("file")
-                    line = frame.get("line")
-                    if not isinstance(file_path, str) or not self._stdlib_filter.keep(
-                        file_path
-                    ):
-                        continue
-                    if not isinstance(line, int):
-                        continue
-                    file_lines.setdefault(file_path, []).append(line)
-
-            exec_path = trace.get("exec_path", [])
-            if isinstance(exec_path, list):
-                for call in exec_path:
-                    if not isinstance(call, dict):
-                        continue
-                    file_path = call.get("file")
-                    line = call.get("line")
-                    if not isinstance(file_path, str) or not self._stdlib_filter.keep(
-                        file_path
-                    ):
-                        continue
-                    if not isinstance(line, int):
-                        continue
-                    file_lines.setdefault(file_path, []).append(line)
+        for frame in frames:
+            file_lines.setdefault(frame.file, []).append(frame.line)
         return file_lines
 
     @staticmethod
@@ -590,80 +527,14 @@ class InstanceComparison:
         return source_map
 
     @staticmethod
-    def _get_ctx_around_line_from_text(
-        source: str, line_number: int, context_size: int
-    ) -> str:
-        if not source:
-            return "<source unavailable>"
-        lines = source.splitlines()
-        if not lines:
-            return "<source unavailable>"
-        if line_number < 1:
-            line_number = 1
-        if line_number > len(lines):
-            line_number = len(lines)
-        start = max(1, line_number - context_size)
-        end = min(len(lines), line_number + context_size)
-        rendered = []
-        for current in range(start, end + 1):
-            marker = "->" if current == line_number else "  "
-            rendered.append(f"{current} {marker} : {lines[current - 1]}")
-        return "\n".join(rendered)
-
-    def _serialize_frames_like_debugger(
-        self,
-        frames: List[Dict[str, Any]],
-        source_map: Dict[str, str],
-        context_size: int,
-    ) -> str:
-        blocks: List[str] = []
-        for index, frame in enumerate(frames):
-            if not isinstance(frame, dict):
-                continue
-            filename = str(frame.get("file", "<unknown>"))
-            function_name = str(frame.get("func", "<unknown>"))
-            line = frame.get("line", 1)
-            line_number = line if isinstance(line, int) else 1
-            source = source_map.get(filename, "")
-            context = self._get_ctx_around_line_from_text(
-                source, line_number, context_size
-            )
-            locals_payload = frame.get("locals", {})
-            if isinstance(locals_payload, (dict, list)):
-                locals_text = json.dumps(
-                    locals_payload, ensure_ascii=False, indent=2, default=str
-                )
-            else:
-                locals_text = str(locals_payload)
-            block = textwrap.dedent(
-                f"""\
-                Block {index}:
-                File: {filename}
-                Function name: {function_name}
-                Line: {line_number}
-                Context:
-                {context}
-                Locals: {locals_text}
-                """
-            ).strip()
-            blocks.append(block)
-
-        if not blocks:
-            return "<no runtime frames captured>"
-        return "\n\n".join(blocks)
-
-    @staticmethod
     def _summarize_failures(
-        traces: List[Dict[str, Any]], test_output: str, max_items: int = 8
+        trace: Mapping[str, Any], test_output: str, max_items: int = 8
     ) -> str:
-        if traces:
-            lines = []
-            for index, trace in enumerate(traces[:max_items], start=1):
-                nodeid = trace.get("nodeid", "<unknown test>")
-                exc_type = trace.get("exc_type", "<unknown exception>")
-                message = trace.get("message", "")
-                lines.append(f"{index}. {nodeid} -> {exc_type}: {message}")
-            return "\n".join(lines)
+        if trace:
+            nodeid = trace.get("nodeid", "<unknown test>")
+            exc_type = trace.get("exc_type", "<unknown exception>")
+            message = trace.get("message", "")
+            return f"1. {nodeid} -> {exc_type}: {message}"
         failure_lines = []
         for line in test_output.splitlines():
             if any(
@@ -701,109 +572,43 @@ class InstanceComparison:
         ]
         focus_line = line_numbers[0] if line_numbers else 1
         source = source_map.get(test_file, "")
-        snippet = self._get_ctx_around_line_from_text(source, focus_line, context_lines)
+        snippet = render_source_context(source, focus_line, context_lines)
         return f"Test file: {test_file}\n{snippet}"
-
-    def _render_related_source_context(
-        self,
-        selected_files: List[str],
-        file_line_map: Dict[str, List[int]],
-        source_map: Dict[str, str],
-        context_lines: int,
-        max_snippets_per_file: int = 2,
-    ) -> str:
-        blocks: List[str] = []
-        for path in selected_files:
-            line_numbers = self._unique_in_order(
-                line
-                for line in file_line_map.get(path, [])
-                if isinstance(line, int)
-            )
-            source = source_map.get(path, "")
-            if not source:
-                blocks.append(f"File: {path}\n<source unavailable>")
-                continue
-            snippets = []
-            for line_number in line_numbers[:max_snippets_per_file]:
-                snippets.append(
-                    self._get_ctx_around_line_from_text(source, line_number, context_lines)
-                )
-            if not snippets:
-                snippets.append(self._get_ctx_around_line_from_text(source, 1, context_lines))
-            blocks.append(f"File: {path}\n" + "\n---\n".join(snippets))
-        return "\n\n".join(blocks) if blocks else "<no related source context available>"
 
     def _build_prompt(
         self,
-        traces: List[Dict[str, Any]],
+        trace: Mapping[str, Any],
         failure_summary: str,
         testcase_source: str,
-        related_context: str,
         include_runtime: bool,
         source_map: Dict[str, str],
     ) -> str:
-        instance_id = self._test_spec.instance_id
-        first_trace = traces[0] if traces else {}
-        exception_type = str(first_trace.get("exc_type", "TestFailure"))
-        exception_msg = str(first_trace.get("message", "See failure summary"))
+        exception_type = str(trace.get("exc_type", "TestFailure"))
+        exception_msg = str(trace.get("message", "See failure summary"))
 
-        frames: List[Dict[str, Any]] = []
-        exec_path_entries: List[Dict[str, Any]] = []
-        for trace in traces:
-            trace_frames = trace.get("frames", [])
-            if isinstance(trace_frames, list):
-                frames.extend([f for f in trace_frames if isinstance(f, dict)])
-            trace_exec_path = trace.get("exec_path", [])
-            if isinstance(trace_exec_path, list):
-                exec_path_entries.extend(
-                    [e for e in trace_exec_path if isinstance(e, dict)]
-                )
+        frames = _trace_frames(trace)
+        exec_path_frames = _trace_exec_path(trace)
 
-        frame_context_lines = self._config.context_lines
         if include_runtime:
-            runtime_trace = self._serialize_frames_like_debugger(
-                frames, source_map, frame_context_lines
-            )
-            if exec_path_entries:
-                ep_lines = []
-                seen = set()
-                for entry in exec_path_entries:
-                    f = entry.get("file", "?")
-                    func = entry.get("func", "?")
-                    line = entry.get("line", "?")
-                    if not isinstance(f, str) or not self._stdlib_filter.keep(f):
-                        continue
-                    key = (f, func)
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    ep_lines.append(f"  {f}:{line} in {func}()")
-                runtime_trace += (
-                    "\n\n## Execution path (functions called during test)\n"
-                    + "\n".join(ep_lines)
-                )
+            execution_path = ExecutionPathSerializer().to_string(exec_path_frames)
+            runtime_frames = FrameSerializer(
+                source_map, self._config.context_lines
+            ).to_string_many(frames)
         else:
-            runtime_trace = "Runtime trace intentionally omitted for this run."
-
-        prompt_prefix_body = (
-            f"Repository instance: {instance_id}\n\n"
-            f"## Failure summary\n{failure_summary}\n\n"
-            f"## Testcase source code\n{testcase_source}\n\n"
-            f"## Related source context (small)\n{related_context}"
-        )
-        exception_body = f"Type: {exception_type}\nMessage: {exception_msg}"
+            execution_path = "intentionally omitted"
+            runtime_frames = "intentionally omitted"
 
         return (
             PromptBuilder()
-            .add_section("context", prompt_prefix_body)
             .add_section("intro", load_prompt("debugger/intro.txt").rstrip("\n"))
-            .add_section("exception", exception_body)
-            .add_section("runtime_trace", runtime_trace)
             .add_section("instructions", load_prompt("debugger/instructions.txt").rstrip("\n"))
-            .add_section(
-                "strict_patch_requirements",
-                load_prompt("swebench/strict_patch_requirements.txt").rstrip("\n"),
-            )
+            .add_section("strict_patch_requirements", load_prompt("swebench/strict_patch_requirements.txt").rstrip("\n"))
+            .add_section("failure_summary", failure_summary)
+            .add_section("testcase_source", testcase_source)
+            .add_section("exception_type", exception_type)
+            .add_section("exception_body", exception_msg)
+            .add_section("execution_path", execution_path)
+            .add_section("runtime_frames", runtime_frames)
             .build()
         )
 
@@ -879,12 +684,7 @@ class InstanceComparison:
             summary_line=summary_line,
         )
 
-    def _resolve_test_output_path(
-        self,
-        run_result: RunResult,
-        output_manager: TraceOutputManager,
-        instance_id: str,
-    ) -> Path:
+    def _resolve_test_output_path(self, run_result: RunResult, output_manager: TraceOutputManager, instance_id: str) -> Path:
         if run_result.trace_path:
             trace_file = Path(run_result.trace_path)
             if trace_file.exists():

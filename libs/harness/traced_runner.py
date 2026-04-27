@@ -10,6 +10,11 @@ import docker
 
 from libs.harness.framework_detector import Framework, FrameworkDetector
 from libs.harness.trace_output import TraceOutputManager
+from libs.frames import (
+    Frame,
+    default_exec_path_pipeline,
+    default_traceback_pipeline,
+)
 
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
@@ -50,9 +55,14 @@ class RunResult:
     error: Optional[str] = None
     traceback: Optional[str] = None
     test_output_path: Optional[str] = None
+    traces: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v for k, v in self.__dict__.items() if v is not None}
+        return {
+            k: v
+            for k, v in self.__dict__.items()
+            if v is not None and k != "traces"
+        }
 
 
 class TracedInstanceRunner:
@@ -134,6 +144,7 @@ class TracedInstanceRunner:
                 num_failures=len(traces),
                 runtime=runtime,
                 test_output_path=str(test_output_path),
+                traces=traces,
             )
 
         except Exception as exc:
@@ -284,4 +295,28 @@ class TracedInstanceRunner:
             raise TraceCollectionError(
                 f"Invalid trace format: expected list, got {type(traces)}"
             )
-        return traces
+        return [self._apply_pipelines(t) for t in traces if isinstance(t, dict)]
+
+    @staticmethod
+    def _apply_pipelines(trace: Dict[str, Any]) -> Dict[str, Any]:
+        raw_frames = trace.get("frames", []) or []
+        raw_exec_path = trace.get("exec_path", []) or []
+
+        tb_pipeline = default_traceback_pipeline()
+        ep_pipeline = default_exec_path_pipeline()
+
+        filtered_frames = [
+            f.to_json()
+            for f in tb_pipeline.run(Frame.from_json(d) for d in raw_frames)
+        ]
+        filtered_exec_path = [
+            {"file": f.file, "func": f.func, "line": f.line}
+            for f in ep_pipeline.run(
+                Frame.from_json({**d, "locals": {}}) for d in raw_exec_path
+            )
+        ]
+
+        out = dict(trace)
+        out["frames"] = filtered_frames
+        out["exec_path"] = filtered_exec_path
+        return out

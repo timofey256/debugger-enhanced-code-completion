@@ -10,7 +10,6 @@ except ModuleNotFoundError:
     sys.path.insert(0, require_env("SWE_BENCH_PATH"))
     import swebench  # noqa: F401
 
-from libs.harness.filters import PathFilter, StdlibFilter
 from libs.harness.framework_detector import Framework, FrameworkDetector
 from libs.harness.trace_output import TraceOutputManager
 from libs.harness.traced_runner import (
@@ -30,8 +29,6 @@ from libs.harness.instance_comparison import (
 )
 
 __all__ = [
-    "PathFilter",
-    "StdlibFilter",
     "Framework",
     "FrameworkDetector",
     "TraceOutputManager",
