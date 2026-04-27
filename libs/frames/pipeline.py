@@ -9,6 +9,7 @@ from libs.frames.filters import (
     SitePackagesFrameFilter,
     StdlibFrameFilter,
     TestbedOnlyFrameFilter,
+    ConftestFrameFilter,
     DedupFrameFilter,
     MaxEntriesFrameFilter,
 )
@@ -47,6 +48,7 @@ def default_traceback_pipeline() -> FramesFilteringPipeline:
             FrozenOrSyntheticFrameFilter(),
             SitePackagesFrameFilter(),
             StdlibFrameFilter(),
+            ConftestFrameFilter(),
         ],
         serializer=LocalsSerializer(cutoff=LocalsSerializer.DEFAULT_CUTOFF),
     )
@@ -56,6 +58,7 @@ def default_exec_path_pipeline() -> FramesFilteringPipeline:
     return FramesFilteringPipeline(
         filters=[
             TestbedOnlyFrameFilter(),
+            ConftestFrameFilter(),
             DedupFrameFilter(by=("file", "func")),
             MaxEntriesFrameFilter(n=500),
         ],

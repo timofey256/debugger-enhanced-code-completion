@@ -97,3 +97,15 @@ class FrameSerializer:
                 locals_payload, ensure_ascii=False, indent=2, default=str
             )
         return str(locals_payload)
+
+
+class ExecutionPathSerializer:
+    HEADER = "## Execution path (functions called during test)"
+
+    def to_string(self, frames: Iterable[Frame]) -> str:
+        lines = [
+            f"  {frame.file}:{frame.line} in {frame.func}()" for frame in frames
+        ]
+        if not lines:
+            return ""
+        return self.HEADER + "\n" + "\n".join(lines)

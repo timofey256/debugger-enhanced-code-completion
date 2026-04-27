@@ -14,4 +14,7 @@ class PromptBuilder:
     def build(self) -> str:
         if not self._sections:
             return ""
-        return "\n\n".join(f"<{name}>\n{body}" for name, body in self._sections)
+        return "\n\n".join(
+            f"<{name}>\n{body}\n</{name}>"
+            for name, body in self._sections
+        )

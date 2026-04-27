@@ -12,7 +12,12 @@ from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tup
 
 import docker
 
-from libs.frames import Frame, FrameSerializer, select_most_informative_trace
+from libs.frames import (
+    ExecutionPathSerializer,
+    Frame,
+    FrameSerializer,
+    select_most_informative_trace,
+)
 from libs.harness.framework_detector import FrameworkDetector
 from libs.harness.io_utils import read_text, render_source_context, write_text
 from libs.harness.trace_output import TraceOutputManager
@@ -268,22 +273,17 @@ class InstanceComparison:
 
         trace = select_most_informative_trace(list(run_result.traces))
 
-        test_output_path = self._resolve_test_output_path(
-            run_result, self._baseline_output, instance_id
-        )
+        test_output_path = self._resolve_test_output_path(run_result, self._baseline_output, instance_id)
         test_output = read_text(test_output_path)
         outcome = self._parse_test_output(test_output)
 
         all_frames = _trace_frames(trace) + _trace_exec_path(trace)
         file_line_map = self._collect_file_line_map(all_frames)
-        selected_files = self._select_context_files(
-            file_line_map, self._config.max_context_files
-        )
+        selected_files = self._select_context_files(file_line_map, self._config.max_context_files)
+
         all_trace_files = list(file_line_map.keys())
         files_to_read = list(dict.fromkeys(selected_files + all_trace_files))
-        source_map = self._read_files_from_image(
-            self._test_spec.instance_image_key, files_to_read
-        )
+        source_map = self._read_files_from_image(self._test_spec.instance_image_key, files_to_read)
 
         return _Baseline(
             run_result=run_result,
@@ -590,24 +590,13 @@ class InstanceComparison:
         exec_path_frames = _trace_exec_path(trace)
 
         if include_runtime:
-            runtime_trace = FrameSerializer(
+            execution_path = ExecutionPathSerializer().to_string(exec_path_frames)
+            runtime_frames = FrameSerializer(
                 source_map, self._config.context_lines
             ).to_string_many(frames)
-            if exec_path_frames:
-                ep_lines = []
-                seen = set()
-                for entry in exec_path_frames:
-                    key = (entry.file, entry.func)
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    ep_lines.append(f"  {entry.file}:{entry.line} in {entry.func}()")
-                runtime_trace += (
-                    "\n\n## Execution path (functions called during test)\n"
-                    + "\n".join(ep_lines)
-                )
         else:
-            runtime_trace = "Runtime trace intentionally omitted for this run."
+            execution_path = "intentionally omitted"
+            runtime_frames = "intentionally omitted"
 
         return (
             PromptBuilder()
@@ -618,7 +607,8 @@ class InstanceComparison:
             .add_section("testcase_source", testcase_source)
             .add_section("exception_type", exception_type)
             .add_section("exception_body", exception_msg)
-            .add_section("runtime_trace", runtime_trace)
+            .add_section("execution_path", execution_path)
+            .add_section("runtime_frames", runtime_frames)
             .build()
         )
 

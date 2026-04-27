@@ -1,11 +1,16 @@
 from libs.frames.frame import Frame
-from libs.frames.serializer import FrameSerializer, LocalsSerializer
+from libs.frames.serializer import (
+    ExecutionPathSerializer,
+    FrameSerializer,
+    LocalsSerializer,
+)
 from libs.frames.filters import (
     FrameFilter,
     FrozenOrSyntheticFrameFilter,
     SitePackagesFrameFilter,
     StdlibFrameFilter,
     TestbedOnlyFrameFilter,
+    ConftestFrameFilter,
     DedupFrameFilter,
     MaxEntriesFrameFilter,
 )
@@ -19,12 +24,14 @@ from libs.frames.selection import select_most_informative_trace
 __all__ = [
     "Frame",
     "FrameSerializer",
+    "ExecutionPathSerializer",
     "LocalsSerializer",
     "FrameFilter",
     "FrozenOrSyntheticFrameFilter",
     "SitePackagesFrameFilter",
     "StdlibFrameFilter",
     "TestbedOnlyFrameFilter",
+    "ConftestFrameFilter",
     "DedupFrameFilter",
     "MaxEntriesFrameFilter",
     "FramesFilteringPipeline",

@@ -60,7 +60,12 @@ class TestbedOnlyFrameFilter:
         self._marker = marker
 
     def keep(self, frame: Frame) -> bool:
-        return self._marker in frame.file and "site-packages" not in frame.file
+        return frame.file.startswith(self._marker) and "site-packages" not in frame.file
+
+
+class ConftestFrameFilter:
+    def keep(self, frame: Frame) -> bool:
+        return not frame.file.endswith("/conftest.py")
 
 
 class DedupFrameFilter:
