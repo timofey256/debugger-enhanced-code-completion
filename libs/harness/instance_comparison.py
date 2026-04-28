@@ -22,6 +22,16 @@ from libs.harness.framework_detector import FrameworkDetector
 from libs.harness.io_utils import read_text, render_source_context, write_text
 from libs.harness.trace_output import TraceOutputManager
 from libs.harness.traced_runner import RunResult, TracedInstanceRunner
+from libs.llm.connector import ToolSessionResult
+from libs.llm.tooling import (
+    ProjectPathResolver,
+    ProjectToolContext,
+    RuntimeToolContext,
+    ToolCatalog,
+    ToolSessionContext,
+    create_with_runtime_catalog,
+    create_without_runtime_catalog,
+)
 
 from libs.prompts import PromptBuilder, load_prompt
 
@@ -118,6 +128,9 @@ class ComparisonConfig:
     timeout: Optional[int] = None
     force_rebuild: bool = False
     nocache: bool = False
+    enable_tools: bool = True
+    max_tool_turns: int = 8
+    max_tool_output_chars: int = 20000
 
 
 @dataclass
@@ -250,12 +263,14 @@ class InstanceComparison:
             prompts.without,
             self._without_runner,
             self._without_output,
+            baseline=baseline,
         )
         with_ = self._run_variant(
             Variant.WITH_RUNTIME,
             prompts.with_,
             self._with_runner,
             self._with_output,
+            baseline=baseline,
         )
 
         report = self._build_report(baseline, without, with_, reference_patch)
@@ -332,6 +347,8 @@ class InstanceComparison:
         prompt: str,
         runner: TracedInstanceRunner,
         output_manager: TraceOutputManager,
+        *,
+        baseline: Optional[_Baseline] = None,
     ) -> VariantResult:
         variant_name = variant.value
         prompt_path = self._artifacts_dir / f"prompt_{variant_name}.txt"
@@ -340,10 +357,14 @@ class InstanceComparison:
 
         write_text(prompt_path, prompt)
 
-        response_text = self._llm.complete_code(prompt, max_tokens=self._config.max_tokens)
+        if self._config.enable_tools and baseline is not None:
+            session = self._run_tool_session(variant, prompt, baseline)
+            patch_text = session.patch
+            response_text = session.render()
+        else:
+            response_text = self._llm.complete_code(prompt, max_tokens=self._config.max_tokens)
+            patch_text = self._extract_unified_diff(response_text)
         write_text(response_path, response_text)
-
-        patch_text = self._extract_unified_diff(response_text)
         write_text(patch_path, patch_text)
 
         if not patch_text.strip():
@@ -525,6 +546,55 @@ class InstanceComparison:
                 except Exception:
                     pass
         return source_map
+
+    def _build_tool_session_context(
+        self, baseline: _Baseline, include_runtime: bool
+    ) -> ToolSessionContext:
+        instance_id = self._test_spec.instance_id
+        project_root = self._baseline_output.project_dir(instance_id)
+        if not project_root.exists() or not any(project_root.iterdir()):
+            raise RuntimeError(
+                f"Project mirror at {project_root} is empty; "
+                "baseline run did not populate /project_mirror."
+            )
+        resolver = ProjectPathResolver(
+            project_root, container_project_root=DOCKER_WORKDIR
+        )
+        project_ctx = ProjectToolContext(
+            resolver=resolver,
+            source_map=baseline.source_map,
+            context_size=self._config.context_lines,
+        )
+        runtime_ctx: Optional[RuntimeToolContext] = None
+        if include_runtime:
+            runtime_ctx = RuntimeToolContext(
+                frames=_trace_frames(baseline.trace),
+                execution_path=_trace_exec_path(baseline.trace),
+                trace=dict(baseline.trace) if baseline.trace else {},
+                test_output_path=baseline.test_output_path,
+            )
+        return ToolSessionContext(project=project_ctx, runtime=runtime_ctx)
+
+    def _run_tool_session(
+        self, variant: Variant, prompt: str, baseline: _Baseline
+    ) -> ToolSessionResult:
+        include_runtime = variant is Variant.WITH_RUNTIME
+        context = self._build_tool_session_context(
+            baseline, include_runtime=include_runtime
+        )
+        catalog: ToolCatalog = (
+            create_with_runtime_catalog()
+            if include_runtime
+            else create_without_runtime_catalog()
+        )
+        return self._llm.complete_with_tools(
+            prompt,
+            catalog=catalog,
+            context=context,
+            max_tool_turns=self._config.max_tool_turns,
+            max_tokens=self._config.max_tokens,
+            max_tool_output_chars=self._config.max_tool_output_chars,
+        )
 
     @staticmethod
     def _summarize_failures(

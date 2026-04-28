@@ -14,6 +14,26 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def render_numbered_range(source: str, start_line: int, end_line: int) -> str:
+    if start_line < 1:
+        start_line = 1
+    if end_line < start_line:
+        end_line = start_line
+
+    lines = source.splitlines()
+    if not lines:
+        return ""
+
+    start_idx = start_line - 1
+    end_idx = min(len(lines), end_line)
+    selected = lines[start_idx:end_idx]
+
+    return "\n".join(
+        f"{line_no}: {line}"
+        for line_no, line in zip(range(start_line, start_line + len(selected)), selected)
+    )
+
+
 def render_source_context(source: str, line_number: int, context_size: int) -> str:
     if not source:
         return "<source unavailable>"

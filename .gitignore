@@ -23,5 +23,6 @@ logs/
 AGENTS.md
 CLAUDE.md
 .claude/
+.codex/
 .github/
 openspec/

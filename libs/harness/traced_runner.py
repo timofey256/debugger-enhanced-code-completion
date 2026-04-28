@@ -217,7 +217,24 @@ class TracedInstanceRunner:
 
         if not self._verify_setup(container):
             raise TraceCollectionError("Trace setup verification failed")
+        self._mirror_project(container)
         return container
+
+    def _mirror_project(self, container) -> None:
+        result = container.exec_run(
+            ["/bin/sh", "-lc", "ls -A /project_mirror | head -1"],
+        )
+        if result.exit_code == 0 and result.output and result.output.strip():
+            return
+        result = container.exec_run(
+            ["/bin/sh", "-lc", f"cp -a {DOCKER_WORKDIR}/. /project_mirror/"],
+            user="root",
+        )
+        if result.exit_code != 0:
+            raise TraceCollectionError(
+                f"Failed to mirror project to /project_mirror: "
+                f"{result.output.decode('utf-8', errors='replace') if result.output else ''}"
+            )
 
     def _verify_setup(self, container) -> bool:
         ok = True
