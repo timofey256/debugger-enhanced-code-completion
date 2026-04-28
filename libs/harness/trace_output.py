@@ -30,6 +30,11 @@ class TraceOutputManager:
     def test_output_file(self, instance_id: str) -> Path:
         return self._base_dir / instance_id / "test_output.txt"
 
+    def project_dir(self, instance_id: str) -> Path:
+        target = self._base_dir / instance_id / "project"
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
     def trace_exists(self, instance_id: str) -> bool:
         return self.trace_file(instance_id).exists()
 
@@ -47,10 +52,12 @@ class TraceOutputManager:
         self, instance_id: str, tracer_dir: Path
     ) -> Dict[str, Dict[str, str]]:
         instance_dir = self.prepare_instance_dir(instance_id)
+        project_dir = self.project_dir(instance_id)
         tracer_path = Path(tracer_dir).resolve()
         return {
             str(tracer_path): {"bind": "/opt/tracers", "mode": "ro"},
             str(instance_dir): {"bind": "/trace_output", "mode": "rw"},
+            str(project_dir): {"bind": "/project_mirror", "mode": "rw"},
         }
 
     def environment(self) -> Dict[str, str]:

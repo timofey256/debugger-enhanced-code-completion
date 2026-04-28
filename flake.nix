@@ -39,11 +39,14 @@
 
         pkgs.openssl
         pkgs.vscode
-        pkgs.claude-code
         pkgs.bash
-        pkgs.github-copilot-cli
         pkgs.nodejs_24
         pkgs.docker_29
+        pkgs.tree
+
+        pkgs.claude-code
+        pkgs.codex
+        pkgs.github-copilot-cli
 
         openspec.packages.${system}.default
       ];
