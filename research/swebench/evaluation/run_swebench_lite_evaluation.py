@@ -194,6 +194,9 @@ def main() -> int:
             framework_detector=framework_detector,
         )
         report = comparison.run()
+        if report is None:
+            logger.error("[%d/%d] Skipped %s due to fatal error", idx, total, instance_id)
+            continue
         report_dict = report.to_dict()
 
         report_path = run_root / "artifacts" / instance_id / "comparison_report.json"

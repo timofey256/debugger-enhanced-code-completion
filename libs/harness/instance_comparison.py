@@ -246,12 +246,34 @@ class InstanceComparison:
             nocache=self._config.nocache,
         )
 
-    def run(self) -> ComparisonReport:
+    def run(self) -> Optional[ComparisonReport]:
         instance_id = self._test_spec.instance_id
         self._logger.info("%s", "=" * 70)
         self._logger.info("Processing debugger comparison for %s", instance_id)
         self._logger.info("%s", "=" * 70)
+        try:
+            return self._run_unsafe()
+        except Exception as exc:
+            self._logger.exception(
+                "Comparison failed for %s: %s", instance_id, exc
+            )
+            error_path = self._artifacts_dir / "comparison_error.json"
+            write_text(
+                error_path,
+                json.dumps(
+                    {
+                        "instance_id": instance_id,
+                        "error_type": type(exc).__name__,
+                        "error_message": str(exc),
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                ),
+            )
+            return None
 
+    def _run_unsafe(self) -> ComparisonReport:
+        instance_id = self._test_spec.instance_id
         reference_patch = str(self._reference_pred.get(KEY_PREDICTION, ""))
         write_text(self._artifacts_dir / "reference_patch.diff", reference_patch)
 
