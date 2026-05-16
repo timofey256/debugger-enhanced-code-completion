@@ -64,3 +64,15 @@ def default_exec_path_pipeline() -> FramesFilteringPipeline:
         ],
         serializer=LocalsSerializer(cutoff=LocalsSerializer.DEFAULT_CUTOFF),
     )
+
+
+def default_step_frames_pipeline() -> FramesFilteringPipeline:
+    return FramesFilteringPipeline(
+        filters=[
+            TestbedOnlyFrameFilter(),
+            ConftestFrameFilter(),
+            DedupFrameFilter(by=("file", "func", "line")),
+            MaxEntriesFrameFilter(n=2000),
+        ],
+        serializer=LocalsSerializer(cutoff=LocalsSerializer.DEFAULT_CUTOFF),
+    )

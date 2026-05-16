@@ -21,6 +21,7 @@ class _ExecutionPathTracer:
     def __init__(self):
         self.called_functions = []
         self.executed_frames = []
+        self.step_frames = []
 
     def __call__(self, frame, event, arg):
         if event == "call":
@@ -29,6 +30,11 @@ class _ExecutionPathTracer:
                 "func": frame.f_code.co_name,
                 "line": frame.f_lineno,
             })
+            return self
+        if event == "line":
+            self.step_frames.append(
+                frame_to_raw_dict(frame, frame.f_lineno)
+            )
             return self
         if event == "return":
             self.executed_frames.append(
@@ -52,6 +58,7 @@ def pytest_runtest_call(item):
         sys.settrace(old_trace)
     item._exec_path = tracer.called_functions
     item._executed_frames = tracer.executed_frames
+    item._step_frames = tracer.step_frames
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -69,6 +76,7 @@ def pytest_runtest_makereport(item, call):
         "message": str(excinfo.value),
         "frames": getattr(item, "_executed_frames", []),
         "exec_path": getattr(item, "_exec_path", []),
+        "step_frames": getattr(item, "_step_frames", []),
     })
 
 
