@@ -15,12 +15,12 @@ providers:
     api_key_env: "DEEPSEEK_API_KEY"
     models:
       deepseek-chat: {}
-      deepseek-v4-chat:
+      deepseek-v4-flash:
         reasoning_effort: "high"
-        thinking: true
+        thinking: false
       deepseek-v4-pro:
         reasoning_effort: "high"
-        thinking: true
+        thinking: false
   anthropic:
     base_url: "https://api.anthropic.com/v1/"
     api_key_env: "ANTHROPIC_API_KEY"
@@ -28,4 +28,13 @@ providers:
   openai:
     base_url: "https://api.openai.com/v1/"
     api_key_env: "OPENAI_API_KEY"
-    models: {}
+    models:
+      gpt-5.4-mini: {}
+      gpt-5-mini: {}
+      gpt-5.1-codex-max: {}
+  together-ai:
+    base_url: "https://api.together.xyz/v1/"
+    api_key_env: "TOGETHERAI_API_KEY"
+    models:
+      deepseek-ai/DeepSeek-V4-Pro: {}
+      deepseek-ai/DeepSeek-V4-Flash: {}
