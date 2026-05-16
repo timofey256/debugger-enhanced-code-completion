@@ -58,6 +58,7 @@ def build_prompt(trace: dict) -> str:
         .add_section("exception", exception_body)
         .add_section("runtime_trace", frames)
         .add_section("instructions", load_prompt("debugger/instructions.txt").rstrip("\n"))
+        .add_section("patch_format", load_prompt("swebench/strict_patch_requirements.txt").rstrip("\n"))
         .build()
     )
 

@@ -37,5 +37,3 @@ You want to modify lines 41-43. Then your diff must look like this:
 - Incorrect start line in the hunk (off by 1 or 2)
 - Including too many context lines and shifting the diff
 - Forgetting to match the source indentation
-
-Nothing else—just the diff.
