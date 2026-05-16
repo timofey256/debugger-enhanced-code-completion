@@ -1,9 +1,43 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 from pathlib import Path
 from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
+
+
+class ProjectScope:
+    def __init__(self, path: Path):
+        self._path = path
+        self._closed = False
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self._path.exists():
+            try:
+                shutil.rmtree(self._path)
+                logger.info("Cleaned up project mirror: %s", self._path)
+            except OSError:
+                logger.warning(
+                    "Failed to clean up project mirror: %s",
+                    self._path,
+                    exc_info=True,
+                )
+
+    def __enter__(self) -> ProjectScope:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
 
 class TraceOutputManager:
@@ -34,6 +68,13 @@ class TraceOutputManager:
         target = self._base_dir / instance_id / "project"
         target.mkdir(parents=True, exist_ok=True)
         return target
+
+    def project_scope(self, instance_id: str) -> ProjectScope:
+        target = self.project_dir(instance_id)
+        if any(target.iterdir()):
+            shutil.rmtree(target)
+            target.mkdir(parents=True, exist_ok=True)
+        return ProjectScope(target)
 
     def trace_exists(self, instance_id: str) -> bool:
         return self.trace_file(instance_id).exists()

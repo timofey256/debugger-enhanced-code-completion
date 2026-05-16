@@ -180,6 +180,12 @@ def _trace_exec_path(trace: Mapping[str, Any]) -> Tuple[Frame, ...]:
     )
 
 
+def _trace_step_frames(trace: Mapping[str, Any]) -> Tuple[Frame, ...]:
+    return tuple(
+        f for f in (Frame.from_raw(d) for d in trace.get("step_frames", [])) if f is not None
+    )
+
+
 class _Prompts(NamedTuple):
     without: str
     with_: str
@@ -277,23 +283,26 @@ class InstanceComparison:
         reference_patch = str(self._reference_pred.get(KEY_PREDICTION, ""))
         write_text(self._artifacts_dir / "reference_patch.diff", reference_patch)
 
-        baseline = self._collect_baseline()
-        prompts = self._build_prompts(baseline)
+        with self._baseline_output.project_scope(instance_id) as project:
+            baseline = self._collect_baseline()
+            prompts = self._build_prompts(baseline)
 
-        without = self._run_variant(
-            Variant.WITHOUT_RUNTIME,
-            prompts.without,
-            self._without_runner,
-            self._without_output,
-            baseline=baseline,
-        )
-        with_ = self._run_variant(
-            Variant.WITH_RUNTIME,
-            prompts.with_,
-            self._with_runner,
-            self._with_output,
-            baseline=baseline,
-        )
+            without = self._run_variant(
+                Variant.WITHOUT_RUNTIME,
+                prompts.without,
+                self._without_runner,
+                self._without_output,
+                baseline=baseline,
+                project_root=project.path,
+            )
+            with_ = self._run_variant(
+                Variant.WITH_RUNTIME,
+                prompts.with_,
+                self._with_runner,
+                self._with_output,
+                baseline=baseline,
+                project_root=project.path,
+            )
 
         report = self._build_report(baseline, without, with_, reference_patch)
 
@@ -371,6 +380,7 @@ class InstanceComparison:
         output_manager: TraceOutputManager,
         *,
         baseline: Optional[_Baseline] = None,
+        project_root: Optional[Path] = None,
     ) -> VariantResult:
         variant_name = variant.value
         prompt_path = self._artifacts_dir / f"prompt_{variant_name}.txt"
@@ -380,7 +390,7 @@ class InstanceComparison:
         write_text(prompt_path, prompt)
 
         if self._config.enable_tools and baseline is not None:
-            session = self._run_tool_session(variant, prompt, baseline)
+            session = self._run_tool_session(variant, prompt, baseline, project_root=project_root)
             patch_text = session.patch
             response_text = session.render()
         else:
@@ -570,10 +580,8 @@ class InstanceComparison:
         return source_map
 
     def _build_tool_session_context(
-        self, baseline: _Baseline, include_runtime: bool
+        self, baseline: _Baseline, include_runtime: bool, project_root: Path
     ) -> ToolSessionContext:
-        instance_id = self._test_spec.instance_id
-        project_root = self._baseline_output.project_dir(instance_id)
         if not project_root.exists() or not any(project_root.iterdir()):
             raise RuntimeError(
                 f"Project mirror at {project_root} is empty; "
@@ -592,17 +600,27 @@ class InstanceComparison:
             runtime_ctx = RuntimeToolContext(
                 frames=_trace_frames(baseline.trace),
                 execution_path=_trace_exec_path(baseline.trace),
+                step_frames=_trace_step_frames(baseline.trace),
                 trace=dict(baseline.trace) if baseline.trace else {},
                 test_output_path=baseline.test_output_path,
             )
         return ToolSessionContext(project=project_ctx, runtime=runtime_ctx)
 
     def _run_tool_session(
-        self, variant: Variant, prompt: str, baseline: _Baseline
+        self,
+        variant: Variant,
+        prompt: str,
+        baseline: _Baseline,
+        *,
+        project_root: Optional[Path] = None,
     ) -> ToolSessionResult:
         include_runtime = variant is Variant.WITH_RUNTIME
+        if project_root is None:
+            project_root = self._baseline_output.project_dir(
+                self._test_spec.instance_id
+            )
         context = self._build_tool_session_context(
-            baseline, include_runtime=include_runtime
+            baseline, include_runtime=include_runtime, project_root=project_root
         )
         catalog: ToolCatalog = (
             create_with_runtime_catalog()
@@ -686,21 +704,22 @@ class InstanceComparison:
             runtime_frames = FrameSerializer(
                 source_map, self._config.context_lines
             ).to_string_many(frames)
+            runtime_specific = load_prompt("debugger/runtime_specific.txt").rstrip("\n")
         else:
             execution_path = "intentionally omitted"
             runtime_frames = "intentionally omitted"
+            runtime_specific = "intentionally omitted"
 
         return (
             PromptBuilder()
             .add_section("intro", load_prompt("debugger/intro.txt").rstrip("\n"))
             .add_section("instructions", load_prompt("debugger/instructions.txt").rstrip("\n"))
-            .add_section("strict_patch_requirements", load_prompt("swebench/strict_patch_requirements.txt").rstrip("\n"))
+            .add_section("runtime_specific", runtime_specific)
             .add_section("failure_summary", failure_summary)
             .add_section("testcase_source", testcase_source)
             .add_section("exception_type", exception_type)
             .add_section("exception_body", exception_msg)
             .add_section("execution_path", execution_path)
-            .add_section("runtime_frames", runtime_frames)
             .build()
         )
 

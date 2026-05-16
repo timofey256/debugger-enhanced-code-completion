@@ -222,12 +222,8 @@ class TracedInstanceRunner:
 
     def _mirror_project(self, container) -> None:
         result = container.exec_run(
-            ["/bin/sh", "-lc", "ls -A /project_mirror | head -1"],
-        )
-        if result.exit_code == 0 and result.output and result.output.strip():
-            return
-        result = container.exec_run(
-            ["/bin/sh", "-lc", f"cp -a {DOCKER_WORKDIR}/. /project_mirror/"],
+            ["/bin/sh", "-lc",
+             f"cp -a {DOCKER_WORKDIR}/. /project_mirror/ && chmod -R a+rwX /project_mirror/"],
             user="root",
         )
         if result.exit_code != 0:
