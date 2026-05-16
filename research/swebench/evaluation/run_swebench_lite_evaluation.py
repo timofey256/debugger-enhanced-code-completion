@@ -62,17 +62,32 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--force_rebuild", action="store_true")
     parser.add_argument("--nocache", action="store_true")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--exclude_repos",
+        nargs="+",
+        type=str,
+        default=[],
+        help="Repository prefixes to exclude (e.g. django/django)",
+    )
     return parser.parse_args()
 
 
 def select_instances(
     dataset: List[Dict[str, Any]],
     instance_ids: List[str] | None,
+    exclude_repos: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
-    if not instance_ids:
-        return list(dataset)
-    selected = set(instance_ids)
-    return [instance for instance in dataset if instance[KEY_INSTANCE_ID] in selected]
+    candidates = dataset
+    if instance_ids:
+        selected = set(instance_ids)
+        candidates = [i for i in candidates if i[KEY_INSTANCE_ID] in selected]
+    if exclude_repos:
+        prefixes = tuple(r.replace("/", "__") for r in exclude_repos)
+        candidates = [
+            i for i in candidates
+            if not i[KEY_INSTANCE_ID].startswith(prefixes)
+        ]
+    return list(candidates)
 
 
 def build_test_specs(
@@ -120,7 +135,7 @@ def main() -> int:
 
     logger.info("Loading dataset: %s", args.dataset)
     dataset = load_swebench_dataset(args.dataset, args.split)
-    selected_instances = select_instances(dataset, args.instance_ids)
+    selected_instances = select_instances(dataset, args.instance_ids, args.exclude_repos)
     logger.info(
         "Selected %d instance(s) from %d total",
         len(selected_instances),

@@ -9,6 +9,7 @@ from typing import Any, Mapping, Optional, Sequence
 
 from libs.frames import ExecutionPathSerializer, Frame, FrameSerializer
 from libs.harness.io_utils import render_numbered_range
+from libs.prompts.resources import load_prompt
 
 
 @dataclass(frozen=True)
@@ -113,6 +114,7 @@ class ProjectToolContext:
 class RuntimeToolContext:
     frames: Sequence[Frame]
     execution_path: Sequence[Frame]
+    step_frames: Sequence[Frame]
     trace: Mapping[str, Any]
     test_output_path: Path
 
@@ -381,12 +383,80 @@ class GetVariableChangeTool(BaseTool):
         return ToolResult(self.spec.name, "unimplemented", "get_variable_change is not implemented")
 
 
-class ApplyPatchTool(BaseTool):
+class GetGranularFramesTool(BaseTool):
     def __init__(self):
         super().__init__(
             ToolSpec(
+                name="get_granular_frames",
+                description=(
+                    "Return all line-level execution frames collected inside a "
+                    "given function over the course of the test run. Each frame "
+                    "captures the file path, line number, function name, and "
+                    "local variable values at the moment that source line was "
+                    "executed.\n\n"
+                    "API:\n"
+                    "  function_name (string, required) — the name of the "
+                    "function to retrieve step frames for. Must match the "
+                    "function name exactly as it appears in the source.\n\n"
+                    "Returns:\n"
+                    "  A serialized list of frame blocks, each containing:\n"
+                    "    - File: source file path\n"
+                    "    - Function name: the function that was executing\n"
+                    "    - Line: the 1-based line number executed\n"
+                    "    - Context: surrounding source lines with the executed "
+                    "line highlighted\n"
+                    "    - Locals: JSON snapshot of local variables at that "
+                    "point in execution\n"
+                    "  Frames are returned in execution order. If no frames "
+                    "match the given function name, returns 'No step frames "
+                    "found for function: <name>'."
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "function_name": {
+                            "type": "string",
+                            "description": "Exact name of the function to retrieve line-level frames for.",
+                        }
+                    },
+                    "required": ["function_name"],
+                    "additionalProperties": False,
+                },
+            )
+        )
+
+    def execute(self, context: ToolSessionContext, invocation: ToolInvocation) -> ToolResult:
+        runtime = context.runtime
+        if runtime is None:
+            return ToolResult(self.spec.name, "error", "Runtime context is not available")
+
+        function_name = str(invocation.arguments.get("function_name", "")).strip()
+        if not function_name:
+            return ToolResult(self.spec.name, "error", "Missing argument: function_name")
+
+        matched = [f for f in runtime.step_frames if f.func == function_name]
+        if not matched:
+            return ToolResult(
+                self.spec.name, "ok", f"No step frames found for function: {function_name}"
+            )
+
+        serializer = FrameSerializer(
+            source_map=context.project.source_map,
+            context_size=context.project.context_size,
+        )
+        return ToolResult(self.spec.name, "ok", serializer.to_string_many(matched))
+
+
+class ApplyPatchTool(BaseTool):
+    def __init__(self):
+        patch_requirements = load_prompt("swebench/strict_patch_requirements.txt").strip()
+        super().__init__(
+            ToolSpec(
                 name="apply_patch",
-                description="Submit final code patch in unified diff format and finish the session.",
+                description=(
+                    "Submit final code patch in unified diff format and finish the session.\n\n"
+                    f"{patch_requirements}"
+                ),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -438,6 +508,7 @@ def create_with_runtime_catalog() -> ToolCatalog:
             GetTestErrorTool(),
             GetExecutionTraceTool(),
             GetFramesTool(),
+            GetGranularFramesTool(),
             GetVariableChangeTool(),
             ApplyPatchTool(),
         ]
