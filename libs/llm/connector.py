@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from dataclasses import dataclass, field
@@ -14,6 +15,7 @@ from libs.llm.tooling import (
     ToolSessionContext,
     parse_tool_invocation_from_call,
 )
+from libs.prompts.resources import load_prompt
 
 
 @dataclass
@@ -110,7 +112,7 @@ class LLMConnector:
         *,
         catalog: ToolCatalog,
         context: ToolSessionContext,
-        max_tool_turns: int = 8,
+        max_tool_turns: int = 10,
         max_tokens: int = 2000,
         max_tool_output_chars: int = 20000,
     ) -> ToolSessionResult:
@@ -157,29 +159,28 @@ class _ToolSessionRunner:
             {"role": "user", "content": prompt},
         ]
         tools = self._catalog.openai_tools()
-        has_apply_patch = any(
-            spec.name == "apply_patch" for spec in self._catalog.specs()
-        )
 
         for turn in range(self._max_tool_turns):
             is_last_turn = turn == self._max_tool_turns - 1
-            if is_last_turn and has_apply_patch:
+            if is_last_turn:
+                patch_requirements = load_prompt("swebench/strict_patch_requirements.txt").strip()
                 messages.append({
                     "role": "user",
                     "content": (
                         "This is your final tool turn. You MUST call apply_patch "
                         "now with a complete unified git diff. No other tool calls "
-                        "and no prose are allowed."
+                        "and no prose are allowed.\n\n"
+                        f"{patch_requirements}"
                     ),
                 })
             create_kwargs: dict[str, Any] = {
                 "model": self._model,
                 "messages": messages,
                 "tools": tools,
-                "max_tokens": self._max_tokens,
+                "max_completion_tokens": self._max_tokens,
                 **self._extra_kwargs(),
             }
-            if is_last_turn and has_apply_patch:
+            if is_last_turn:
                 create_kwargs["tool_choice"] = {
                     "type": "function",
                     "function": {"name": "apply_patch"},
@@ -188,8 +189,12 @@ class _ToolSessionRunner:
             choice = response.choices[0].message
             tool_calls = list(getattr(choice, "tool_calls", None) or [])
             content_text = choice.content or ""
+            reasoning_content = getattr(choice, "reasoning_content", None)
+            logger.debug(choice)
 
             assistant_msg: dict[str, Any] = {"role": "assistant", "content": content_text}
+            if reasoning_content:
+                assistant_msg["reasoning_content"] = reasoning_content
             if tool_calls:
                 assistant_msg["tool_calls"] = [
                     {
@@ -212,15 +217,27 @@ class _ToolSessionRunner:
                 patch = extract_unified_diff(content_text)
                 if patch:
                     return ToolSessionResult(patch=patch, transcript=messages)
-                nudge = (
-                    "Submit your final fix using the apply_patch tool with a "
-                    "complete unified git diff. Do not return prose."
-                )
-                messages.append({"role": "user", "content": nudge})
-                continue
+                if not is_last_turn:
+                    nudge = (
+                        "Submit your final fix using the apply_patch tool with a "
+                        "complete unified git diff. Do not return prose."
+                    )
+                    messages.append({"role": "user", "content": nudge})
 
             for tc in tool_calls:
-                invocation = parse_tool_invocation_from_call(tc)
+                try:
+                    invocation = parse_tool_invocation_from_call(tc)
+                except (ValueError, json.JSONDecodeError) as exc:
+                    logger.warning(
+                        "tool-session turn=%d bad tool_call id=%s: %s",
+                        turn, tc.id, exc,
+                    )
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": f"Error: malformed tool call – {exc}. Please retry with valid JSON arguments.",
+                    })
+                    continue
                 result = self._catalog.execute(self._context, invocation)
                 tool_output = result.to_string(max_chars=self._max_tool_output_chars)
                 messages.append({
