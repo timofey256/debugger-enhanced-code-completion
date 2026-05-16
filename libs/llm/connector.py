@@ -22,6 +22,8 @@ from libs.prompts.resources import load_prompt
 class ToolSessionResult:
     patch: str
     transcript: list[dict[str, Any]] = field(default_factory=list)
+    input_tokens: int = 0
+    output_tokens: int = 0
 
     def render(self) -> str:
         lines: list[str] = []
@@ -82,7 +84,7 @@ class LLMConnector:
         self._model_options = models[model] or {}
         self._client = OpenAI(api_key=api_key, base_url=provider_cfg["base_url"])
 
-    def complete_code(self, prompt: str, max_tokens: int = 2000) -> str:
+    def complete_code(self, prompt: str, max_tokens: int = 2000) -> ToolSessionResult:
         messages = [{"role": "user", "content": prompt}]
         kwargs = {}
         if "reasoning_effort" in self._model_options:
@@ -104,7 +106,19 @@ class LLMConnector:
             "Received response from provider=%s model=%s",
             self._provider, self._model,
         )
-        return str(response.choices[0].message.content)
+        usage = response.usage
+        input_tokens = 0
+        output_tokens = 0
+        if usage is None:
+            logger.warning("No usage data in response from complete_code provider=%s model=%s", self._provider, self._model)
+        else:
+            input_tokens = usage.prompt_tokens or 0
+            output_tokens = usage.completion_tokens or 0
+        return ToolSessionResult(
+            patch=str(response.choices[0].message.content),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
 
     def complete_with_tools(
         self,
@@ -159,6 +173,8 @@ class _ToolSessionRunner:
             {"role": "user", "content": prompt},
         ]
         tools = self._catalog.openai_tools()
+        _input_tokens = 0
+        _output_tokens = 0
 
         for turn in range(self._max_tool_turns):
             is_last_turn = turn == self._max_tool_turns - 1
@@ -186,6 +202,12 @@ class _ToolSessionRunner:
                     "function": {"name": "apply_patch"},
                 }
             response = self._client.chat.completions.create(**create_kwargs)
+            usage = response.usage
+            if usage is None:
+                logger.warning("tool-session turn=%d: no usage data in response", turn)
+            else:
+                _input_tokens += usage.prompt_tokens or 0
+                _output_tokens += usage.completion_tokens or 0
             choice = response.choices[0].message
             tool_calls = list(getattr(choice, "tool_calls", None) or [])
             content_text = choice.content or ""
@@ -216,7 +238,7 @@ class _ToolSessionRunner:
             if not tool_calls:
                 patch = extract_unified_diff(content_text)
                 if patch:
-                    return ToolSessionResult(patch=patch, transcript=messages)
+                    return ToolSessionResult(patch=patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens)
                 if not is_last_turn:
                     nudge = (
                         "Submit your final fix using the apply_patch tool with a "
@@ -255,18 +277,18 @@ class _ToolSessionRunner:
                     and result.status == "ok"
                     and result.patch
                 ):
-                    return ToolSessionResult(patch=result.patch, transcript=messages)
+                    return ToolSessionResult(patch=result.patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens)
 
         for msg in reversed(messages):
             if msg.get("role") == "assistant":
                 patch = extract_unified_diff(msg.get("content") or "")
                 if patch:
-                    return ToolSessionResult(patch=patch, transcript=messages)
+                    return ToolSessionResult(patch=patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens)
         logger.warning(
             "Tool session exhausted %d turns without final apply_patch",
             self._max_tool_turns,
         )
-        return ToolSessionResult(patch="", transcript=messages)
+        return ToolSessionResult(patch="", transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens)
 
     def _extra_kwargs(self) -> dict[str, Any]:
         kwargs: dict[str, Any] = {}

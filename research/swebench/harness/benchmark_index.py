@@ -69,12 +69,15 @@ def normalize_variant_record(variant_report: Dict[str, Any]) -> Dict[str, Any]:
         "failure_count": outcome.get("failure_count"),
         "ran_tests": outcome.get("ran_tests"),
         "summary_line": summary_line,
+        "success": outcome.get("success", False),
         "failure_reason": classify_failure_reason(status, summary_line, run_error),
         "raw_error_excerpt": _excerpt(run_error or summary_line or run_result.get("traceback", "")),
         "prompt_path": variant_report.get("prompt_path"),
         "response_path": variant_report.get("response_path"),
         "patch_path": variant_report.get("patch_path"),
         "test_output_path": variant_report.get("test_output_path"),
+        "token_usage": variant_report.get("token_usage", {"input_tokens": 0, "output_tokens": 0}),
+        "localization_accuracy": variant_report.get("localization_accuracy", {"correct_file": False, "correct_function": False, "correct_line": False}),
     }
 
 

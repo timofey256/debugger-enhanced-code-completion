@@ -4,7 +4,7 @@ import json
 import logging
 import re
 import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -20,6 +20,7 @@ from libs.frames import (
 )
 from libs.harness.framework_detector import FrameworkDetector
 from libs.harness.io_utils import read_text, render_source_context, write_text
+from libs.harness.localization_metrics import compute_localization_accuracy
 from libs.harness.trace_output import TraceOutputManager
 from libs.harness.traced_runner import RunResult, TracedInstanceRunner
 from libs.llm.connector import ToolSessionResult
@@ -75,6 +76,7 @@ class Outcome:
     failure_count: Optional[int] = None
     ran_tests: Optional[int] = None
     summary_line: str = ""
+    success: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -82,6 +84,7 @@ class Outcome:
             "failure_count": self.failure_count,
             "ran_tests": self.ran_tests,
             "summary_line": self.summary_line,
+            "success": self.success,
         }
 
 
@@ -96,6 +99,8 @@ class VariantResult:
     run_result: RunResult
     run_skipped: bool = False
     test_output_path: Optional[Path] = None
+    token_usage: Dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0})
+    localization_accuracy: Dict[str, bool] = field(default_factory=lambda: {"correct_file": False, "correct_function": False, "correct_line": False})
 
     def to_dict(self) -> Dict[str, Any]:
         run_result_payload: Any = (
@@ -112,6 +117,8 @@ class VariantResult:
             "run_skipped": self.run_skipped,
             "run_result": run_result_payload,
             "outcome": self.outcome.to_dict(),
+            "token_usage": self.token_usage,
+            "localization_accuracy": self.localization_accuracy,
         }
         if self.test_output_path is not None:
             payload["test_output_path"] = str(self.test_output_path)
@@ -393,9 +400,12 @@ class InstanceComparison:
             session = self._run_tool_session(variant, prompt, baseline, project_root=project_root)
             patch_text = session.patch
             response_text = session.render()
+            token_usage = {"input_tokens": session.input_tokens, "output_tokens": session.output_tokens}
         else:
-            response_text = self._llm.complete_code(prompt, max_tokens=self._config.max_tokens)
+            result = self._llm.complete_code(prompt, max_tokens=self._config.max_tokens)
+            response_text = result.patch
             patch_text = self._extract_unified_diff(response_text)
+            token_usage = {"input_tokens": result.input_tokens, "output_tokens": result.output_tokens}
         write_text(response_path, response_text)
         write_text(patch_path, patch_text)
 
@@ -417,6 +427,7 @@ class InstanceComparison:
                     error="No unified diff could be extracted from model response.",
                 ),
                 run_skipped=True,
+                token_usage=token_usage,
             )
 
         variant_pred = dict(self._reference_pred)
@@ -441,6 +452,7 @@ class InstanceComparison:
                 test_output_path=self._resolve_test_output_path(
                     run_result, output_manager, instance_id
                 ),
+                token_usage=token_usage,
             )
 
         test_output_path = self._resolve_test_output_path(
@@ -459,6 +471,7 @@ class InstanceComparison:
             run_result=run_result,
             run_skipped=False,
             test_output_path=test_output_path,
+            token_usage=token_usage,
         )
 
     def _build_report(
@@ -469,6 +482,8 @@ class InstanceComparison:
         reference_patch: str,
     ) -> ComparisonReport:
         instance_id = self._test_spec.instance_id
+        without.localization_accuracy = compute_localization_accuracy(without.generated_patch, reference_patch)
+        with_.localization_accuracy = compute_localization_accuracy(with_.generated_patch, reference_patch)
         baseline_dict: Dict[str, Any] = {
             "run_result": baseline.run_result.to_dict(),
             "trace_path": str(
@@ -793,6 +808,7 @@ class InstanceComparison:
             failure_count=failure_count,
             ran_tests=ran_tests,
             summary_line=summary_line,
+            success="PASSED" in text,
         )
 
     def _resolve_test_output_path(self, run_result: RunResult, output_manager: TraceOutputManager, instance_id: str) -> Path:

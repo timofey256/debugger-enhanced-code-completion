@@ -84,11 +84,11 @@ def get_patches(project_path: str, test_name: str) -> List[DiffBlock]:
     logger.info("Generated prompt:\n%s", prompt)
 
     # query LLM
-    model_response = _get_llm().complete_code(prompt)
-    logger.info("Model response:\n%s", model_response)
+    result = _get_llm().complete_code(prompt)
+    logger.info("Model response:\n%s", result.patch)
 
     # parse patches from the response
-    return parse_unified_diff(model_response)
+    return parse_unified_diff(result.patch)
 
 @app.post("/debug")
 def debug():
