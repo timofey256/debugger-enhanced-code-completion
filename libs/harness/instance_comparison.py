@@ -808,7 +808,7 @@ class InstanceComparison:
             failure_count=failure_count,
             ran_tests=ran_tests,
             summary_line=summary_line,
-            success="PASSED" in text,
+            success=failure_count == 0,
         )
 
     def _resolve_test_output_path(self, run_result: RunResult, output_manager: TraceOutputManager, instance_id: str) -> Path:

@@ -48,7 +48,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--dataset", type=str, default="princeton-nlp/SWE-bench_Lite")
     parser.add_argument("--split", type=str, default="test")
-    parser.add_argument("--instance_ids", nargs="+", type=str)
     parser.add_argument("--predictions_path", type=str, default="gold")
     parser.add_argument("--output_dir", type=str, default="./output/benchmark-runs")
     parser.add_argument("--run_id", type=str, default=None)
@@ -63,30 +62,42 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nocache", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument(
+        "--filter_for",
+        nargs="+",
+        type=str,
+        default=[],
+        help="Repository prefixes to FILTER for. Overrides `exclude_repos`!",
+    )
+    parser.add_argument(
         "--exclude_repos",
         nargs="+",
         type=str,
         default=[],
-        help="Repository prefixes to exclude (e.g. django/django)",
+        help="Repository prefixes to EXCLUDE",
     )
     return parser.parse_args()
 
 
 def select_instances(
     dataset: List[Dict[str, Any]],
-    instance_ids: List[str] | None,
+    filter_for: List[str] | None = None,
     exclude_repos: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
     candidates = dataset
-    if instance_ids:
-        selected = set(instance_ids)
-        candidates = [i for i in candidates if i[KEY_INSTANCE_ID] in selected]
+    if filter_for:
+        for e in filter_for:
+            candidates = [
+                i for i in candidates
+                if i[KEY_INSTANCE_ID].startswith(e)
+            ]
+        return list(candidates)
+
     if exclude_repos:
-        prefixes = tuple(r.replace("/", "__") for r in exclude_repos)
-        candidates = [
-            i for i in candidates
-            if not i[KEY_INSTANCE_ID].startswith(prefixes)
-        ]
+        for e in exclude_repos:
+            candidates = [
+                i for i in candidates
+                if not i[KEY_INSTANCE_ID].startswith(e)
+            ]
     return list(candidates)
 
 
@@ -135,7 +146,7 @@ def main() -> int:
 
     logger.info("Loading dataset: %s", args.dataset)
     dataset = load_swebench_dataset(args.dataset, args.split)
-    selected_instances = select_instances(dataset, args.instance_ids, args.exclude_repos)
+    selected_instances = select_instances(dataset, args.filter_for, args.exclude_repos)
     logger.info(
         "Selected %d instance(s) from %d total",
         len(selected_instances),
