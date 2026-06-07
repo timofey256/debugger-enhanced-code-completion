@@ -101,6 +101,7 @@ class VariantResult:
     test_output_path: Optional[Path] = None
     token_usage: Dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0})
     localization_accuracy: Dict[str, bool] = field(default_factory=lambda: {"correct_file": False, "correct_function": False, "correct_line": False})
+    tool_call_counts: Dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         run_result_payload: Any = (
@@ -119,6 +120,7 @@ class VariantResult:
             "outcome": self.outcome.to_dict(),
             "token_usage": self.token_usage,
             "localization_accuracy": self.localization_accuracy,
+            "tool_call_counts": self.tool_call_counts,
         }
         if self.test_output_path is not None:
             payload["test_output_path"] = str(self.test_output_path)
@@ -401,11 +403,13 @@ class InstanceComparison:
             patch_text = session.patch
             response_text = session.render()
             token_usage = {"input_tokens": session.input_tokens, "output_tokens": session.output_tokens}
+            tool_call_counts = session.tool_call_counts
         else:
             result = self._llm.complete_code(prompt, max_tokens=self._config.max_tokens)
             response_text = result.patch
             patch_text = self._extract_unified_diff(response_text)
             token_usage = {"input_tokens": result.input_tokens, "output_tokens": result.output_tokens}
+            tool_call_counts: Dict[str, int] = {}
         write_text(response_path, response_text)
         write_text(patch_path, patch_text)
 
@@ -428,6 +432,7 @@ class InstanceComparison:
                 ),
                 run_skipped=True,
                 token_usage=token_usage,
+                tool_call_counts=tool_call_counts,
             )
 
         variant_pred = dict(self._reference_pred)
@@ -453,6 +458,7 @@ class InstanceComparison:
                     run_result, output_manager, instance_id
                 ),
                 token_usage=token_usage,
+                tool_call_counts=tool_call_counts,
             )
 
         test_output_path = self._resolve_test_output_path(
@@ -472,6 +478,7 @@ class InstanceComparison:
             run_skipped=False,
             test_output_path=test_output_path,
             token_usage=token_usage,
+            tool_call_counts=tool_call_counts,
         )
 
     def _build_report(

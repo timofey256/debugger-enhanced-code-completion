@@ -62,6 +62,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nocache", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument(
+        "--build_only",
+        action="store_true",
+        help="Only build Docker images; skip predictions loading, patch search, and benchmark runs.",
+    )
+    parser.add_argument(
         "--filter_for",
         nargs="+",
         type=str,
@@ -156,17 +161,6 @@ def main() -> int:
         logger.error("No instances selected for execution")
         return 1
 
-    logger.info("Loading predictions from: %s", args.predictions_path)
-    predictions = get_predictions_from_file(
-        args.predictions_path, args.dataset, args.split
-    )
-    predictions_by_id = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
-
-    test_specs = build_test_specs(selected_instances, predictions_by_id, logger)
-    if not test_specs:
-        logger.error("No runnable test specs after matching predictions")
-        return 1
-
     logger.info("Connecting to Docker")
     client = docker.from_env()
 
@@ -180,6 +174,21 @@ def main() -> int:
         instance_image_tag="latest",
         env_image_tag="latest",
     )
+
+    if args.build_only:
+        logger.info("Build-only mode: skipping evaluation")
+        return 0
+
+    logger.info("Loading predictions from: %s", args.predictions_path)
+    predictions = get_predictions_from_file(
+        args.predictions_path, args.dataset, args.split
+    )
+    predictions_by_id = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
+
+    test_specs = build_test_specs(selected_instances, predictions_by_id, logger)
+    if not test_specs:
+        logger.error("No runnable test specs after matching predictions")
+        return 1
 
     trace_collector_dir = REPO_ROOT / "libs" / "tracing"
     if not trace_collector_dir.exists():

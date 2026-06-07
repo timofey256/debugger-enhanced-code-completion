@@ -78,6 +78,7 @@ def normalize_variant_record(variant_report: Dict[str, Any]) -> Dict[str, Any]:
         "test_output_path": variant_report.get("test_output_path"),
         "token_usage": variant_report.get("token_usage", {"input_tokens": 0, "output_tokens": 0}),
         "localization_accuracy": variant_report.get("localization_accuracy", {"correct_file": False, "correct_function": False, "correct_line": False}),
+        "tool_call_counts": variant_report.get("tool_call_counts", {}),
     }
 
 

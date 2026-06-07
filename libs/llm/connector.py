@@ -24,6 +24,7 @@ class ToolSessionResult:
     transcript: list[dict[str, Any]] = field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
+    tool_call_counts: dict[str, int] = field(default_factory=dict)
 
     def render(self) -> str:
         lines: list[str] = []
@@ -175,6 +176,7 @@ class _ToolSessionRunner:
         tools = self._catalog.openai_tools()
         _input_tokens = 0
         _output_tokens = 0
+        _tool_call_counts: dict[str, int] = {}
 
         for turn in range(self._max_tool_turns):
             is_last_turn = turn == self._max_tool_turns - 1
@@ -238,7 +240,7 @@ class _ToolSessionRunner:
             if not tool_calls:
                 patch = extract_unified_diff(content_text)
                 if patch:
-                    return ToolSessionResult(patch=patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens)
+                    return ToolSessionResult(patch=patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens, tool_call_counts=_tool_call_counts)
                 if not is_last_turn:
                     nudge = (
                         "Submit your final fix using the apply_patch tool with a "
@@ -261,6 +263,7 @@ class _ToolSessionRunner:
                     })
                     continue
                 result = self._catalog.execute(self._context, invocation)
+                _tool_call_counts[result.name] = _tool_call_counts.get(result.name, 0) + 1
                 tool_output = result.to_string(max_chars=self._max_tool_output_chars)
                 messages.append({
                     "role": "tool",
@@ -277,18 +280,18 @@ class _ToolSessionRunner:
                     and result.status == "ok"
                     and result.patch
                 ):
-                    return ToolSessionResult(patch=result.patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens)
+                    return ToolSessionResult(patch=result.patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens, tool_call_counts=_tool_call_counts)
 
         for msg in reversed(messages):
             if msg.get("role") == "assistant":
                 patch = extract_unified_diff(msg.get("content") or "")
                 if patch:
-                    return ToolSessionResult(patch=patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens)
+                    return ToolSessionResult(patch=patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens, tool_call_counts=_tool_call_counts)
         logger.warning(
             "Tool session exhausted %d turns without final apply_patch",
             self._max_tool_turns,
         )
-        return ToolSessionResult(patch="", transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens)
+        return ToolSessionResult(patch="", transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens, tool_call_counts=_tool_call_counts)
 
     def _extra_kwargs(self) -> dict[str, Any]:
         kwargs: dict[str, Any] = {}
