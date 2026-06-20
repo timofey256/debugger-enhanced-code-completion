@@ -6,9 +6,10 @@ the tests run; this module reads those and injects the matching tracer.
 
 Pytest is wired separately via a copied conftest.py and is intentionally
 absent from the dispatch table.
-"""
 
-from __future__ import annotations
+Must stay importable on Python 3.6 testbeds, so no `from __future__ import
+annotations` or other 3.7+-only syntax.
+"""
 
 import os
 import sys

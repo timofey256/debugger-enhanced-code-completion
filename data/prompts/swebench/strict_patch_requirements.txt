@@ -6,3 +6,10 @@ STRICT PATCH FORMAT REQUIREMENTS (highest priority):
   - `+++ b/<path>`
 - Paths must be repository-relative (e.g. `django/utils/autoreload.py`).
 - Never use absolute paths such as `/testbed/...`.
+- Fix the bug in the LIBRARY/SOURCE code. NEVER modify test files: do not
+  edit anything under a `tests/` or `test/` directory or any file whose name
+  starts with `test_` or ends with `_test.py`. The tests are fixed separately;
+  editing them cannot resolve the task.
+- For every hunk, copy the surrounding context lines verbatim from the real
+  file (use open_file to read the exact lines first) and include a few
+  unchanged context lines above and below your change.

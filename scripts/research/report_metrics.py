@@ -12,7 +12,8 @@ VARIANTS = ("without_runtime", "with_runtime")
 @dataclass
 class VariantStats:
     total: int = 0
-    successful: int = 0
+    resolved: int = 0
+    applied: int = 0
     correct_file: int = 0
     correct_function: int = 0
     correct_line: int = 0
@@ -22,7 +23,12 @@ class VariantStats:
     def absorb(self, variant_data: dict) -> None:
         self.total += 1
         outcome = variant_data.get("outcome", {})
-        self.successful += int(bool(outcome.get("success", False)))
+        resolved = outcome.get("resolved")
+        if resolved is None:
+            resolved = outcome.get("success", False)
+        self.resolved += int(bool(resolved))
+        status = outcome.get("status")
+        self.applied += int(status not in ("apply_failed", "not_run", None))
         loc = variant_data.get("localization_accuracy", {})
         self.correct_file += int(bool(loc.get("correct_file", False)))
         self.correct_function += int(bool(loc.get("correct_function", False)))
@@ -41,7 +47,8 @@ class VariantStats:
         lines = [
             f"── {name} ──",
             f"  total:             {self.total}",
-            f"  successful:        {self.successful}  ({self._pct(self.successful)})",
+            f"  resolved:          {self.resolved}  ({self._pct(self.resolved)})",
+            f"  patch applied:     {self.applied}  ({self._pct(self.applied)})",
             f"  correct file:      {self.correct_file}  ({self._pct(self.correct_file)})",
             f"  correct function:  {self.correct_function}  ({self._pct(self.correct_function)})",
             f"  correct line:      {self.correct_line}  ({self._pct(self.correct_line)})",

@@ -17,6 +17,10 @@ def pytest_addoption(parser):
     )
 
 
+_MAX_STEP_FRAMES = 200
+_MAX_CALL_FRAMES = 4000
+
+
 class _ExecutionPathTracer:
     def __init__(self):
         self.called_functions = []
@@ -24,12 +28,16 @@ class _ExecutionPathTracer:
         self.step_frames = []
 
     def __call__(self, frame, event, arg):
+        if len(self.step_frames) >= _MAX_STEP_FRAMES:
+            sys.settrace(None)
+            return None
         if event == "call":
-            self.called_functions.append({
-                "file": frame.f_code.co_filename,
-                "func": frame.f_code.co_name,
-                "line": frame.f_lineno,
-            })
+            if len(self.called_functions) < _MAX_CALL_FRAMES:
+                self.called_functions.append({
+                    "file": frame.f_code.co_filename,
+                    "func": frame.f_code.co_name,
+                    "line": frame.f_lineno,
+                })
             return self
         if event == "line":
             self.step_frames.append(
@@ -37,9 +45,10 @@ class _ExecutionPathTracer:
             )
             return self
         if event == "return":
-            self.executed_frames.append(
-                frame_to_raw_dict(frame, frame.f_lineno)
-            )
+            if len(self.executed_frames) < _MAX_CALL_FRAMES:
+                self.executed_frames.append(
+                    frame_to_raw_dict(frame, frame.f_lineno)
+                )
         return self
 
 

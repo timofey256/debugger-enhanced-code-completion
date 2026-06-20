@@ -287,11 +287,81 @@ class _ToolSessionRunner:
                 patch = extract_unified_diff(msg.get("content") or "")
                 if patch:
                     return ToolSessionResult(patch=patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens, tool_call_counts=_tool_call_counts)
+
+        forced_patch, used_in, used_out = self._request_final_patch(messages)
+        _input_tokens += used_in
+        _output_tokens += used_out
+        if forced_patch:
+            return ToolSessionResult(patch=forced_patch, transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens, tool_call_counts=_tool_call_counts)
+
         logger.warning(
             "Tool session exhausted %d turns without final apply_patch",
             self._max_tool_turns,
         )
         return ToolSessionResult(patch="", transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens, tool_call_counts=_tool_call_counts)
+
+    def _request_final_patch(self, messages: list[dict[str, Any]]) -> tuple[str, int, int]:
+        patch_requirements = load_prompt("swebench/strict_patch_requirements.txt").strip()
+        investigation = self._render_investigation(messages)
+        clean_messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a software engineer. Output ONLY a unified git diff "
+                    "that fixes the described bug. Do not call tools. Do not write "
+                    "explanations or markdown fences."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"{investigation}\n\n"
+                    "Using the investigation above, output the COMPLETE unified "
+                    "git diff that fixes the bug now. If uncertain, still output "
+                    "your single best-guess diff.\n\n"
+                    f"{patch_requirements}"
+                ),
+            },
+        ]
+        try:
+            response = self._client.chat.completions.create(
+                model=self._model,
+                messages=clean_messages,
+                max_completion_tokens=self._max_tokens,
+                **self._extra_kwargs(),
+            )
+        except Exception as exc:
+            logger.warning("final patch extraction request failed: %s", exc)
+            return "", 0, 0
+        usage = response.usage
+        used_in = (usage.prompt_tokens or 0) if usage else 0
+        used_out = (usage.completion_tokens or 0) if usage else 0
+        content = response.choices[0].message.content or ""
+        messages.append({"role": "assistant", "content": content})
+        return extract_unified_diff(content), used_in, used_out
+
+    @staticmethod
+    def _render_investigation(messages: list[dict[str, Any]], max_chars: int = 40000) -> str:
+        task = ""
+        body: list[str] = []
+        for msg in messages:
+            content = msg.get("content") or ""
+            role = msg.get("role")
+            if role == "user" and not task:
+                task = content
+            elif role == "assistant" and content.strip():
+                body.append("## Analysis\n" + content)
+            elif role == "tool" and content.strip():
+                body.append("## Evidence\n" + content)
+        tail: list[str] = []
+        used = 0
+        for chunk in reversed(body):
+            if used + len(chunk) > max_chars:
+                break
+            tail.append(chunk)
+            used += len(chunk)
+        tail.reverse()
+        return "## Task\n" + task + "\n\n" + "\n\n".join(tail)
 
     def _extra_kwargs(self) -> dict[str, Any]:
         kwargs: dict[str, Any] = {}

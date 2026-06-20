@@ -24,6 +24,7 @@ from libs.harness.localization_metrics import compute_localization_accuracy
 from libs.harness.trace_output import TraceOutputManager
 from libs.harness.traced_runner import RunResult, TracedInstanceRunner
 from libs.llm.connector import ToolSessionResult
+from libs.llm.patch_apply import PatchReconstructor
 from libs.llm.tooling import (
     ProjectPathResolver,
     ProjectToolContext,
@@ -38,9 +39,17 @@ from libs.prompts import PromptBuilder, load_prompt
 
 from swebench.harness.constants import (
     DOCKER_WORKDIR,
+    FAIL_TO_PASS,
     KEY_MODEL,
     KEY_PREDICTION,
+    PASS_TO_PASS,
+    ResolvedStatus,
     UTF8,
+)
+from swebench.harness.grading import (
+    get_eval_tests_report,
+    get_logs_eval,
+    get_resolution_status,
 )
 
 
@@ -77,6 +86,7 @@ class Outcome:
     ran_tests: Optional[int] = None
     summary_line: str = ""
     success: bool = False
+    resolved: Optional[bool] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -85,6 +95,7 @@ class Outcome:
             "ran_tests": self.ran_tests,
             "summary_line": self.summary_line,
             "success": self.success,
+            "resolved": self.resolved,
         }
 
 
@@ -97,6 +108,7 @@ class VariantResult:
     generated_patch: str
     outcome: Outcome
     run_result: RunResult
+    raw_patch: str = ""
     run_skipped: bool = False
     test_output_path: Optional[Path] = None
     token_usage: Dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0})
@@ -115,6 +127,7 @@ class VariantResult:
             "response_path": str(self.response_path),
             "patch_path": str(self.patch_path),
             "generated_patch": self.generated_patch,
+            "raw_patch": self.raw_patch,
             "run_skipped": self.run_skipped,
             "run_result": run_result_payload,
             "outcome": self.outcome.to_dict(),
@@ -138,7 +151,7 @@ class ComparisonConfig:
     force_rebuild: bool = False
     nocache: bool = False
     enable_tools: bool = True
-    max_tool_turns: int = 8
+    max_tool_turns: int = 10
     max_tool_output_chars: int = 20000
 
 
@@ -326,7 +339,16 @@ class InstanceComparison:
         instance_id = self._test_spec.instance_id
         run_result = self._baseline_runner.run(self._reference_pred, skip_patch=True)
 
-        trace = select_most_informative_trace(list(run_result.traces))
+        traces = list(run_result.traces)
+        if traces:
+            trace = select_most_informative_trace(traces)
+        else:
+            self._logger.warning(
+                "No baseline trace for %s; proceeding without runtime context "
+                "(variants still run via project tools)",
+                instance_id,
+            )
+            trace = {}
 
         test_output_path = self._resolve_test_output_path(run_result, self._baseline_output, instance_id)
         test_output = read_text(test_output_path)
@@ -411,6 +433,11 @@ class InstanceComparison:
             token_usage = {"input_tokens": result.input_tokens, "output_tokens": result.output_tokens}
             tool_call_counts: Dict[str, int] = {}
         write_text(response_path, response_text)
+
+        raw_patch = patch_text
+        raw_patch_path = self._artifacts_dir / f"patch_{variant_name}_raw.diff"
+        write_text(raw_patch_path, raw_patch)
+        patch_text = self._reconstruct_patch(patch_text, project_root)
         write_text(patch_path, patch_text)
 
         if not patch_text.strip():
@@ -420,6 +447,7 @@ class InstanceComparison:
                 response_path=response_path,
                 patch_path=patch_path,
                 generated_patch=patch_text,
+                raw_patch=raw_patch,
                 outcome=Outcome(
                     status=Status.NOT_RUN,
                     summary_line="not run (no patch extracted)",
@@ -451,6 +479,7 @@ class InstanceComparison:
                 response_path=response_path,
                 patch_path=patch_path,
                 generated_patch=patch_text,
+                raw_patch=raw_patch,
                 outcome=Outcome(status=status, summary_line=run_error),
                 run_result=run_result,
                 run_skipped=True,
@@ -466,6 +495,7 @@ class InstanceComparison:
         )
         test_output_text = read_text(test_output_path)
         outcome = self._parse_test_output(test_output_text)
+        self._grade_resolution(outcome, test_output_path)
 
         return VariantResult(
             variant=variant,
@@ -473,6 +503,7 @@ class InstanceComparison:
             response_path=response_path,
             patch_path=patch_path,
             generated_patch=patch_text,
+            raw_patch=raw_patch,
             outcome=outcome,
             run_result=run_result,
             run_skipped=False,
@@ -489,8 +520,12 @@ class InstanceComparison:
         reference_patch: str,
     ) -> ComparisonReport:
         instance_id = self._test_spec.instance_id
-        without.localization_accuracy = compute_localization_accuracy(without.generated_patch, reference_patch)
-        with_.localization_accuracy = compute_localization_accuracy(with_.generated_patch, reference_patch)
+        without.localization_accuracy = compute_localization_accuracy(
+            without.raw_patch or without.generated_patch, reference_patch
+        )
+        with_.localization_accuracy = compute_localization_accuracy(
+            with_.raw_patch or with_.generated_patch, reference_patch
+        )
         baseline_dict: Dict[str, Any] = {
             "run_result": baseline.run_result.to_dict(),
             "trace_path": str(
@@ -657,6 +692,46 @@ class InstanceComparison:
             max_tokens=self._config.max_tokens,
             max_tool_output_chars=self._config.max_tool_output_chars,
         )
+
+    def _reconstruct_patch(
+        self, patch_text: str, project_root: Optional[Path]
+    ) -> str:
+        if not patch_text.strip() or project_root is None:
+            return patch_text
+        try:
+            reconstructed = PatchReconstructor(project_root).reconstruct(patch_text)
+        except Exception as exc:
+            self._logger.warning("Patch reconstruction error: %s", exc)
+            return patch_text
+        if reconstructed and reconstructed.strip():
+            self._logger.info(
+                "Reconstructed patch (%d -> %d chars)",
+                len(patch_text),
+                len(reconstructed),
+            )
+            return reconstructed
+        self._logger.info("Patch reconstruction unavailable; using raw model patch")
+        return patch_text
+
+    def _grade_resolution(self, outcome: Outcome, test_output_path: Path) -> None:
+        try:
+            status_map, _ = get_logs_eval(self._test_spec, str(test_output_path))
+        except Exception as exc:
+            self._logger.warning("Resolution grading failed: %s", exc)
+            return
+        if not status_map:
+            outcome.resolved = False
+            return
+        gold = {
+            FAIL_TO_PASS: list(self._test_spec.FAIL_TO_PASS),
+            PASS_TO_PASS: list(self._test_spec.PASS_TO_PASS),
+        }
+        report = get_eval_tests_report(status_map, gold)
+        resolved = get_resolution_status(report) == ResolvedStatus.FULL.value
+        outcome.resolved = resolved
+        outcome.success = resolved
+        if resolved:
+            outcome.status = Status.PASSED
 
     @staticmethod
     def _summarize_failures(

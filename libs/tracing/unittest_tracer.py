@@ -9,6 +9,9 @@ from _raw_frame import frame_to_raw_dict
 _trace_store = []
 _current_exec_tracer = None
 
+_MAX_STEP_FRAMES = 200
+_MAX_CALL_FRAMES = 4000
+
 
 class _ExecutionPathTracer:
     def __init__(self):
@@ -17,12 +20,16 @@ class _ExecutionPathTracer:
         self.step_frames = []
 
     def __call__(self, frame, event, arg):
+        if len(self.step_frames) >= _MAX_STEP_FRAMES:
+            sys.settrace(None)
+            return None
         if event == "call":
-            self.called_functions.append({
-                "file": frame.f_code.co_filename,
-                "func": frame.f_code.co_name,
-                "line": frame.f_lineno,
-            })
+            if len(self.called_functions) < _MAX_CALL_FRAMES:
+                self.called_functions.append({
+                    "file": frame.f_code.co_filename,
+                    "func": frame.f_code.co_name,
+                    "line": frame.f_lineno,
+                })
             return self
         if event == "line":
             self.step_frames.append(
@@ -30,19 +37,30 @@ class _ExecutionPathTracer:
             )
             return self
         if event == "return":
-            self.executed_frames.append(
-                frame_to_raw_dict(frame, frame.f_lineno)
-            )
+            if len(self.executed_frames) < _MAX_CALL_FRAMES:
+                self.executed_frames.append(
+                    frame_to_raw_dict(frame, frame.f_lineno)
+                )
         return self
 
 
+def _frames_from_traceback(exc_tb):
+    frames = []
+    tb = exc_tb
+    while tb is not None:
+        frames.append(frame_to_raw_dict(tb.tb_frame, tb.tb_lineno))
+        tb = tb.tb_next
+    return frames
+
+
 def _capture_from_live_tb(test, err, exec_path=None, executed_frames=None, step_frames=None):
-    exc_type, exc_value, _ = err
+    exc_type, exc_value, exc_tb = err
+    tb_frames = _frames_from_traceback(exc_tb) if exc_tb is not None else []
     _trace_store.append({
         "nodeid": str(test),
         "exc_type": exc_type.__name__,
         "message": str(exc_value),
-        "frames": executed_frames or [],
+        "frames": tb_frames or executed_frames or [],
         "exec_path": exec_path or [],
         "step_frames": step_frames or [],
     })

@@ -1,11 +1,16 @@
 """Shared helpers for converting live Python frames into raw JSON-serializable dicts.
 
-In-process tracers use these helpers to capture every frame WITHOUT applying
-path-based filtering or length truncation. Filtering and truncation happen
-later, on the host, via libs.frames.FramesFilteringPipeline.
-"""
+In-process tracers use these helpers to capture frames without path-based
+filtering; host-side filtering still happens later via
+libs.frames.FramesFilteringPipeline. Per-value size and per-frame locals counts
+ARE bounded here, because unbounded capture of large objects (e.g. Django
+querysets) on every traced line exhausts container memory and produces
+multi-gigabyte trace files.
 
-from __future__ import annotations
+This module must stay importable on the oldest interpreter any testbed pins
+(Python 3.6), so it avoids `from __future__ import annotations` and any
+3.7+-only syntax.
+"""
 
 try:
     import jsonpickle as _jsonpickle
@@ -16,20 +21,29 @@ except ImportError:
 
 
 _UNSERIALIZABLE = "<unserializable>"
+_MAX_VALUE_CHARS = 400
+_MAX_LOCALS = 30
 
 
 def serialize_value_raw(value) -> str:
     try:
         if _HAS_JSONPICKLE:
-            return str(_jsonpickle.dumps(value, unpicklable=False))
-        return repr(value)
+            out = str(_jsonpickle.dumps(value, unpicklable=False))
+        else:
+            out = repr(value)
     except Exception:
         return _UNSERIALIZABLE
+    if len(out) > _MAX_VALUE_CHARS:
+        return out[:_MAX_VALUE_CHARS] + "...<truncated>"
+    return out
 
 
 def serialize_locals_raw(locals_mapping) -> dict:
     out = {}
-    for k, v in locals_mapping.items():
+    for index, (k, v) in enumerate(locals_mapping.items()):
+        if index >= _MAX_LOCALS:
+            out["<truncated>"] = "%d more locals" % (len(locals_mapping) - _MAX_LOCALS)
+            break
         out[str(k)] = serialize_value_raw(v)
     return out
 

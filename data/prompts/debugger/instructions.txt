@@ -1,39 +1,38 @@
 ## What you must do
-1. **Diagnose** the issue using the trace frames and source context provided.
-2. Produce **a unified diff patch** (one per file) that fixes the issue.
-   - Use the unified diff format:
-     - `--- path/to/file.py` for the original file
-     - `+++ path/to/file.py` for the new version
-     - Each hunk begins with `@@ -a,b +c,d @@`
-     - Lines to delete start with `-`, lines to add start with `+`
-     - Include at most 3 lines of **unchanged context** above and below (i.e., use `-U3`)
-   - **Do not** include commentary or prose—output only the diff.
-3. If multiple files need a change, output multiple diff blocks.
-4. **Carefully set the starting line number `a` in the hunk header** so it matches the first unchanged or deleted line from the original file.
-5. The diff **must exactly align** with the source context shown in the trace blocks. Do not shift it up or down.
-6. Make sure to include the whole file path, not just the file name.
-7. Make sure you copy all the comments from the source code.
+1. **Diagnose the root cause** of the failure using the failing test, the
+   exception, the trace frames, and the source you read with the tools.
+2. **Locate the real bug in the source code.** Use `search_symbol` and
+   `open_file` to read the exact lines of the library/source function that is
+   responsible. Fix the cause, not the symptom, and make the change general
+   enough to handle the cases the failing test exercises.
+3. **Edit only non-test source files.** NEVER modify files under a `tests/` or
+   `test/` directory, or any file whose name starts with `test_` or ends with
+   `_test.py`. The failing tests are provided for you and are graded
+   separately; editing them cannot resolve the task.
+4. Produce **a unified diff patch** and submit it with `apply_patch`:
+   - `--- a/path/to/file.py` and `+++ b/path/to/file.py`
+   - Each hunk begins with `@@ -a,b +c,d @@`
+   - Lines to delete start with `-`, lines to add start with `+`, unchanged
+     context lines start with a single space.
+   - Include 3 lines of unchanged context above and below each change.
+5. **Copy context lines verbatim** from the file you opened, including exact
+   indentation and any comments. The hunk is located by matching these context
+   lines, so they must reproduce the real source exactly. (Approximate line
+   numbers in the `@@` header are tolerated, but the surrounding text must
+   match.)
+6. If multiple files need changes, output one diff block per file.
 
-### Example - correct diff with aligned header and context
-Original context:
-  40 : def scale(x):
-  41 :     if x is None:
-  42 :         return 0
-  43 :     return x * 2
-
-You want to modify lines 41-43. Then your diff must look like this:
+### Example
+After reading the real source with open_file:
 
 ```diff
---- src/utils/math.py
-+++ src/utils/math.py
-@@ -41,3 +41,4 @@
+--- a/src/utils/math.py
++++ b/src/utils/math.py
+@@ -40,4 +40,6 @@
+ def scale(x):
      if x is None:
          return 0
++    if x < 0:
++        raise ValueError("x must be non-negative")
      return x * 2
-+    # New logic here
 ```
-
-⚠️ Common mistakes to avoid:
-- Incorrect start line in the hunk (off by 1 or 2)
-- Including too many context lines and shifting the diff
-- Forgetting to match the source indentation

@@ -35,7 +35,8 @@ from swebench.harness.test_spec.test_spec import TestSpec
 
 _GIT_APPLY_CMDS = [
     "git apply --verbose",
-    "git apply --verbose --reject",
+    "git apply --verbose --recount",
+    "git apply --verbose -C1 --recount",
     "patch --batch --fuzz=5 -p1 -i",
 ]
 
