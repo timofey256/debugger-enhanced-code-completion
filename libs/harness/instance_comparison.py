@@ -151,7 +151,7 @@ class ComparisonConfig:
     force_rebuild: bool = False
     nocache: bool = False
     enable_tools: bool = True
-    max_tool_turns: int = 10
+    max_tool_turns: int = 50
     max_tool_output_chars: int = 20000
 
 

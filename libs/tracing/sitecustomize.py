@@ -19,6 +19,7 @@ import traceback
 _INJECTORS = {
     "django": ("django_tracer", "inject_django_tracer"),
     "unittest": ("unittest_tracer", "inject_unittest_tracer"),
+    "sympy": ("sympy_tracer", "inject_sympy_tracer"),
     "unknown": ("unittest_tracer", "inject_unittest_tracer"),
 }
 

@@ -11,10 +11,12 @@ class Framework(str, Enum):
     PYTEST = "pytest"
     UNITTEST = "unittest"
     DJANGO = "django"
+    SYMPY = "sympy"
     UNKNOWN = "unknown"
 
 
-_PYTEST_INDICATORS = ("pytest", "py.test")
+_SYMPY_INDICATORS = ("bin/test",)
+_PYTEST_INDICATORS = ("pytest", "py.test", "tox")
 _DJANGO_INDICATORS = ("manage.py test", "runtests.py")
 _UNITTEST_INDICATORS = ("python -m unittest", "unittest")
 
@@ -54,6 +56,8 @@ class FrameworkDetector:
         return framework
 
     def _classify(self, eval_script: str) -> Framework:
+        if any(indicator in eval_script for indicator in _SYMPY_INDICATORS):
+            return Framework.SYMPY
         if any(indicator in eval_script for indicator in _PYTEST_INDICATORS):
             return Framework.PYTEST
         if any(indicator in eval_script for indicator in _DJANGO_INDICATORS):
