@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -58,6 +60,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test_context_lines", type=int, default=25)
     parser.add_argument("--max_context_files", type=int, default=4)
     parser.add_argument("--timeout", type=int, default=None)
+    parser.add_argument(
+        "--max_workers",
+        type=int,
+        default=1,
+        help="Number of instances to evaluate concurrently. 1 = sequential.",
+    )
     parser.add_argument("--force_rebuild", action="store_true")
     parser.add_argument("--nocache", action="store_true")
     parser.add_argument("--verbose", action="store_true")
@@ -90,12 +98,10 @@ def select_instances(
 ) -> List[Dict[str, Any]]:
     candidates = dataset
     if filter_for:
-        for e in filter_for:
-            candidates = [
-                i for i in candidates
-                if i[KEY_INSTANCE_ID].startswith(e)
-            ]
-        return list(candidates)
+        return [
+            i for i in candidates
+            if any(i[KEY_INSTANCE_ID].startswith(prefix) for prefix in filter_for)
+        ]
 
     if exclude_repos:
         for e in exclude_repos:
@@ -169,7 +175,7 @@ def main() -> int:
         client,
         selected_instances,
         force_rebuild=args.force_rebuild,
-        max_workers=1,
+        max_workers=max(1, args.max_workers),
         namespace=None,
         instance_image_tag="latest",
         env_image_tag="latest",
@@ -197,7 +203,6 @@ def main() -> int:
 
     config = build_config(args)
     llm = LLMConnector(provider=args.provider, model=args.model)
-    framework_detector = FrameworkDetector()
 
     index = init_run_index(
         run_id=run_id,
@@ -212,45 +217,71 @@ def main() -> int:
     write_run_index(index_path, index)
 
     total = len(test_specs)
-    for idx, (test_spec, reference_pred) in enumerate(test_specs, start=1):
+    index_lock = threading.Lock()
+    thread_local = threading.local()
+
+    def worker_client():
+        existing = getattr(thread_local, "client", None)
+        if existing is None:
+            existing = docker.from_env()
+            thread_local.client = existing
+        return existing
+
+    def process_one(idx: int, test_spec, reference_pred):
         instance_id = test_spec.instance_id
         logger.info("[%d/%d] Starting %s", idx, total, instance_id)
-
         comparison = InstanceComparison(
             test_spec=test_spec,
             reference_pred=reference_pred,
-            client=client,
+            client=worker_client(),
             llm=llm,
             trace_collector_dir=trace_collector_dir,
             output_dir=run_root,
             run_id=run_id,
             config=config,
             logger=logger,
-            framework_detector=framework_detector,
+            framework_detector=FrameworkDetector(),
         )
-        report = comparison.run()
+        try:
+            return comparison.run()
+        except Exception:
+            logger.exception("[%d/%d] Unhandled error for %s", idx, total, instance_id)
+            return None
+
+    def record_result(idx: int, instance_id: str, report) -> None:
         if report is None:
             logger.error("[%d/%d] Skipped %s due to fatal error", idx, total, instance_id)
-            continue
-        report_dict = report.to_dict()
-
+            return
         report_path = run_root / "artifacts" / instance_id / "comparison_report.json"
-        record = build_instance_index_record(report_dict, report_path=report_path)
-        append_record(index, record)
-        write_run_index(index_path, index)
-
-        without_status = record["variants"][Variant.WITHOUT_RUNTIME.value]["status"]
-        with_status = record["variants"][Variant.WITH_RUNTIME.value]["status"]
+        record = build_instance_index_record(report.to_dict(), report_path=report_path)
+        with index_lock:
+            append_record(index, record)
+            write_run_index(index_path, index)
         logger.info(
             "[%d/%d] Finished %s (%s=%s, %s=%s)",
             idx,
             total,
             instance_id,
             Variant.WITHOUT_RUNTIME.value,
-            without_status,
+            record["variants"][Variant.WITHOUT_RUNTIME.value]["status"],
             Variant.WITH_RUNTIME.value,
-            with_status,
+            record["variants"][Variant.WITH_RUNTIME.value]["status"],
         )
+
+    workers = max(1, args.max_workers)
+    if workers == 1:
+        for idx, (test_spec, reference_pred) in enumerate(test_specs, start=1):
+            record_result(idx, test_spec.instance_id, process_one(idx, test_spec, reference_pred))
+    else:
+        logger.info("Running with %d parallel workers", workers)
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            future_to_meta = {
+                executor.submit(process_one, idx, test_spec, reference_pred): (idx, test_spec.instance_id)
+                for idx, (test_spec, reference_pred) in enumerate(test_specs, start=1)
+            }
+            for future in as_completed(future_to_meta):
+                idx, instance_id = future_to_meta[future]
+                record_result(idx, instance_id, future.result())
 
     finalize_run_index(index)
     write_run_index(index_path, index)
