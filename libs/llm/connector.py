@@ -1,13 +1,21 @@
 import json
 import logging
 import os
+import random
+import time
 from dataclasses import dataclass, field
 from importlib.resources import files
 from typing import Any
 
 import yaml
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import (
+    APIConnectionError,
+    APITimeoutError,
+    InternalServerError,
+    OpenAI,
+    RateLimitError,
+)
 
 from libs.llm.patch_utils import extract_unified_diff
 from libs.llm.tooling import (
@@ -16,6 +24,60 @@ from libs.llm.tooling import (
     parse_tool_invocation_from_call,
 )
 from libs.prompts.resources import load_prompt
+
+_RETRYABLE_ERRORS = (
+    RateLimitError,
+    APIConnectionError,
+    APITimeoutError,
+    InternalServerError,
+)
+_MAX_RETRIES = 10
+_BASE_RETRY_DELAY = 2.0
+_MAX_RETRY_DELAY = 60.0
+_RETRY_JITTER = 1.0
+
+
+def _retry_after_seconds(exc: Exception) -> float | None:
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None) or {}
+    ms = headers.get("retry-after-ms")
+    if ms:
+        try:
+            return float(ms) / 1000.0
+        except (TypeError, ValueError):
+            pass
+    secs = headers.get("retry-after")
+    if secs:
+        try:
+            return float(secs)
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def create_chat_completion(client: OpenAI, **create_kwargs: Any):
+    attempt = 0
+    while True:
+        try:
+            return client.chat.completions.create(**create_kwargs)
+        except _RETRYABLE_ERRORS as exc:
+            attempt += 1
+            if attempt > _MAX_RETRIES:
+                logger.error(
+                    "LLM call failed after %d retries: %s", _MAX_RETRIES, exc
+                )
+                raise
+            backoff = min(_MAX_RETRY_DELAY, _BASE_RETRY_DELAY * (2 ** (attempt - 1)))
+            hinted = _retry_after_seconds(exc) or 0.0
+            delay = min(_MAX_RETRY_DELAY, max(backoff, hinted)) + random.uniform(0.0, _RETRY_JITTER)
+            logger.warning(
+                "LLM %s (attempt %d/%d); retrying in %.2fs",
+                type(exc).__name__,
+                attempt,
+                _MAX_RETRIES,
+                delay,
+            )
+            time.sleep(delay)
 
 
 @dataclass
@@ -83,7 +145,11 @@ class LLMConnector:
         self._provider = provider
         self._model = model
         self._model_options = models[model] or {}
-        self._client = OpenAI(api_key=api_key, base_url=provider_cfg["base_url"])
+        self._client = OpenAI(
+            api_key=api_key,
+            base_url=provider_cfg["base_url"],
+            max_retries=0,
+        )
 
     def complete_code(self, prompt: str, max_tokens: int = 2000) -> ToolSessionResult:
         messages = [{"role": "user", "content": prompt}]
@@ -97,7 +163,8 @@ class LLMConnector:
             "Sending request to provider=%s model=%s",
             self._provider, self._model,
         )
-        response = self._client.chat.completions.create(
+        response = create_chat_completion(
+            self._client,
             model=self._model,
             messages=messages,
             max_tokens=max_tokens,
@@ -127,7 +194,7 @@ class LLMConnector:
         *,
         catalog: ToolCatalog,
         context: ToolSessionContext,
-        max_tool_turns: int = 10,
+        max_tool_turns: int = 50,
         max_tokens: int = 2000,
         max_tool_output_chars: int = 20000,
     ) -> ToolSessionResult:
@@ -203,7 +270,7 @@ class _ToolSessionRunner:
                     "type": "function",
                     "function": {"name": "apply_patch"},
                 }
-            response = self._client.chat.completions.create(**create_kwargs)
+            response = create_chat_completion(self._client, **create_kwargs)
             usage = response.usage
             if usage is None:
                 logger.warning("tool-session turn=%d: no usage data in response", turn)
@@ -324,7 +391,8 @@ class _ToolSessionRunner:
             },
         ]
         try:
-            response = self._client.chat.completions.create(
+            response = create_chat_completion(
+                self._client,
                 model=self._model,
                 messages=clean_messages,
                 max_completion_tokens=self._max_tokens,
