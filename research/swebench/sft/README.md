@@ -9,15 +9,15 @@ The whole pipeline can be visualized as:
 
 ```
 benchmark run (outputs from benchmark run)
-    │
-    ├─ 1. build_replay_sft_dataset.py   ── replay of successful runs ──► replay.jsonl
-    ├─ 2. dump_teacher_packets.py       ── per-instance evidence packets for the teacher
-    │  3. (teacher authors plan JSONs: ordered lists of tool calls)
-    │  4. render_teacher_plans.py       ── executes plans against real tools ──► teacher.jsonl
-    ├─ 5. validate_sft_dataset.py       ── rejection sampling / quality gates on merged train.jsonl
-    ├─ 6. tokenize_trajectories.py      ── ChatML + assistant-only labels ──► HF dataset
-    ├─ 7. train_sft.py                  ── LoRA SFT ──► adapter
-    └─ 8. serve_vllm.sh                 ── OpenAI-compatible endpoint for harness evaluation
+│
+├─ 1. build_replay_sft_dataset.py   --- replay of successful runs --> saved into replay.jsonl
+├─ 2. dump_teacher_packets.py       --- per-instance evidence packets for the teacher
+├─ 3. teacher creates plan JSONs (ordered lists of tool calls)
+├─ 4. render_teacher_plans.py       --- executes plans against real tools --> saved into teacher.jsonl
+├─ 5. validate_sft_dataset.py       --- rejection sampling / quality gates on .jsonl
+├─ 6. tokenize_trajectories.py      --- ChatML + assistant-only labels --> saved as HF dataset
+├─ 7. train_sft.py                  --- LoRA SFT --> adapter
+└─ 8. serve_vllm.sh                 --- OpenAI-compatible endpoint for harness evaluation
 ```
 
 #### Description of files
