@@ -1,0 +1,164 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "print_project_tree",
+      "description": "Print project tree rooted at /testbed. Output contains folders and .py files only.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "open_file",
+      "description": "Read lines from a file under /testbed using start_line and end_line (inclusive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute /testbed path or path relative to /testbed."
+          },
+          "start_line": {
+            "type": "integer",
+            "description": "1-based start line."
+          },
+          "end_line": {
+            "type": "integer",
+            "description": "1-based end line."
+          }
+        },
+        "required": [
+          "path",
+          "start_line",
+          "end_line"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "search_symbol",
+      "description": "Search symbol in /testbed Python files using grep -R -n --include=*.py.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "description": "Literal symbol to search."
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_test_error",
+      "description": "Return failing exception type and message from runtime trace.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_execution_trace",
+      "description": "Serialize runtime execution path using ExecutionPathSerializer.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_frames",
+      "description": "Serialize traceback frames using FrameSerializer with existing source context rendering.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_granular_frames",
+      "description": "Return all line-level execution frames collected inside a given function over the course of the test run. Each frame captures the file path, line number, function name, and local variable values at the moment that source line was executed.\n\nAPI:\n  function_name (string, required) \u2014 the name of the function to retrieve step frames for. Must match the function name exactly as it appears in the source.\n\nReturns:\n  A serialized list of frame blocks, each containing:\n    - File: source file path\n    - Function name: the function that was executing\n    - Line: the 1-based line number executed\n    - Context: surrounding source lines with the executed line highlighted\n    - Locals: JSON snapshot of local variables at that point in execution\n  Frames are returned in execution order. If no frames match the given function name, returns 'No step frames found for function: <name>'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "function_name": {
+            "type": "string",
+            "description": "Exact name of the function to retrieve line-level frames for."
+          }
+        },
+        "required": [
+          "function_name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_variable_change",
+      "description": "Return variable value transitions over execution. This tool is currently unimplemented.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "variable_name": {
+            "type": "string",
+            "description": "Name of variable to inspect."
+          }
+        },
+        "required": [
+          "variable_name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "apply_patch",
+      "description": "Submit final code patch in unified diff format and finish the session.\n\nSTRICT PATCH FORMAT REQUIREMENTS (highest priority):\n- Output only patch text; no prose and no markdown fences.\n- Use git-compatible unified diff format with file headers:\n  - `diff --git a/<path> b/<path>`\n  - `--- a/<path>`\n  - `+++ b/<path>`\n- Paths must be repository-relative (e.g. `django/utils/autoreload.py`).\n- Never use absolute paths such as `/testbed/...`.\n- Fix the bug in the LIBRARY/SOURCE code. NEVER modify test files: do not\n  edit anything under a `tests/` or `test/` directory or any file whose name\n  starts with `test_` or ends with `_test.py`. The tests are fixed separately;\n  editing them cannot resolve the task.\n- For every hunk, copy the surrounding context lines verbatim from the real\n  file (use open_file to read the exact lines first) and include a few\n  unchanged context lines above and below your change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patch": {
+            "type": "string",
+            "description": "Unified diff patch text."
+          }
+        },
+        "required": [
+          "patch"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+]

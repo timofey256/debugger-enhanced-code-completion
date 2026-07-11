@@ -39,12 +39,7 @@ providers:
       deepseek-ai/DeepSeek-V4-Pro: {}
       deepseek-ai/DeepSeek-V4-Flash: {}
   custom:
-    # Self-hosted vLLM (OpenAI-compatible) on the RunPod box, reached via the
-    # RunPod HTTP proxy. Serves Qwen2.5-Coder-7B-Instruct plus the runtime-tool
-    # LoRA adapter (served under the name "runtime-lora"). Requires HTTP port
-    # 8000 exposed on the pod. Set CUSTOM_API_KEY to any non-empty string
-    # (vLLM ignores it unless launched with --api-key).
-    base_url: "https://auxeeo02bgjiqo-8000.proxy.runpod.net/v1"
+    base_url: "fill in your pods URL"
     api_key_env: "CUSTOM_API_KEY"
     models:
       runtime-lora: {}
