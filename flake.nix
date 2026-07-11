@@ -48,11 +48,20 @@
         pkgs.codex
         pkgs.github-copilot-cli
 
+        pkgs.doxygen
+        pkgs.graphviz
+
         openspec.packages.${system}.default
       ];
 
       shellHook = ''
         export PYTHONPATH="$PWD:$PWD/libs:$PYTHONPATH"
+
+        echo "Generating Doxygen documentation..."
+        doxygen Doxyfile > /dev/null 2>&1
+        echo "Doxygen documentation: output/doxygen/html/index.html"
+
+        echo "NOTE: supply your API keys in the .env file in the project root (e.g. DEEPSEEK_API_KEY, OPENAI_API_KEY, CUSTOM_API_KEY)."
       '';
     };
   };

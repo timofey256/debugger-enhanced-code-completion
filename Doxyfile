@@ -1,0 +1,41 @@
+PROJECT_NAME           = "debugger-enhanced-code-completion"
+PROJECT_BRIEF          = "Runtime-debugger-enhanced LLM patch generation"
+OUTPUT_DIRECTORY       = output/doxygen
+
+INPUT                  = apps libs research
+FILE_PATTERNS          = *.py
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */__pycache__/*
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+OPTIMIZE_OUTPUT_JAVA   = YES
+PYTHON_DOCSTRING       = YES
+
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_TREEVIEW      = YES
+HTML_DYNAMIC_SECTIONS  = YES
+
+HAVE_DOT               = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+UML_LOOK               = YES
+DOT_UML_DETAILS        = YES
+UML_LIMIT_NUM_FIELDS   = 20
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+GRAPHICAL_HIERARCHY    = YES
+DIRECTORY_GRAPH        = YES
+DOT_GRAPH_MAX_NODES    = 100
+
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
