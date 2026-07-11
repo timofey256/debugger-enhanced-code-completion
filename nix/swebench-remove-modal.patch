@@ -1,0 +1,79 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 82d4831..3662474 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -27,7 +27,6 @@ dependencies = [
+     "docker",
+     "ghapi",
+     "GitPython",
+-    "modal",
+     "pre-commit",
+     "python-dotenv",
+     "requests",
+diff --git a/swebench/harness/__init__.py b/swebench/harness/__init__.py
+index 9356700..674c172 100644
+--- a/swebench/harness/__init__.py
++++ b/swebench/harness/__init__.py
+@@ -10,7 +10,6 @@ from swebench.harness import (
+     constants,
+     dockerfiles,
+     log_parsers,
+-    modal_eval,
+     test_spec,
+ )
+ 
+@@ -26,6 +25,5 @@ __all__ = [
+     "constants",
+     "dockerfiles",
+     "log_parsers",
+-    "modal_eval",
+     "test_spec",
+ ]
+diff --git a/swebench/harness/run_evaluation.py b/swebench/harness/run_evaluation.py
+index 40cb3de..a9149a6 100644
+--- a/swebench/harness/run_evaluation.py
++++ b/swebench/harness/run_evaluation.py
+@@ -47,10 +47,6 @@ from swebench.harness.docker_build import (
+ )
+ from swebench.harness.grading import get_eval_report
+ from swebench.harness.reporting import make_run_report
+-from swebench.harness.modal_eval import (
+-    run_instances_modal,
+-    validate_modal_credentials,
+-)
+ from swebench.harness.test_spec.test_spec import make_test_spec, TestSpec
+ from swebench.harness.utils import (
+     EvaluationError,
+@@ -485,7 +481,6 @@ def main(
+     timeout: int,
+     namespace: str | None,
+     rewrite_reports: bool,
+-    modal: bool,
+     instance_image_tag: str = "latest",
+     env_image_tag: str = "latest",
+     report_dir: str = ".",
+@@ -520,15 +515,6 @@ def main(
+     )
+     full_dataset = load_swebench_dataset(dataset_name, split, instance_ids)
+ 
+-    if modal:
+-        # run instances on Modal
+-        if not dataset:
+-            print("No instances to run.")
+-        else:
+-            validate_modal_credentials()
+-            run_instances_modal(predictions, dataset, full_dataset, run_id, timeout)
+-        return
+-
+     # run instances locally
+     if platform.system() == "Linux":
+         resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
+@@ -670,8 +656,5 @@ if __name__ == "__main__":
+         "--report_dir", type=str, default=".", help="Directory to write reports to"
+     )
+ 
+-    # Modal execution args
+-    parser.add_argument("--modal", type=str2bool, default=False, help="Run on Modal")
+-
+     args = parser.parse_args()
+     main(**vars(args))

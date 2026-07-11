@@ -4,38 +4,63 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     openspec.url = "github:Fission-AI/OpenSpec";
+    swebench-src = {
+      url = "github:SWE-bench/SWE-bench/fa79f3af3e0f212d4d14b1c858c77fcaae5308ce";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, openspec }:
+  outputs = { self, nixpkgs, openspec, swebench-src }:
   let
     system = "x86_64-linux";
     pkgs = import nixpkgs {
       inherit system;
       config.allowUnfree = true;
     };
+
+    swebench = pkgs.applyPatches {
+      name = "swebench-patched";
+      src = swebench-src;
+      patches = [ ./nix/swebench-remove-modal.patch ];
+    };
+
+    pythonEnv = pkgs.python313.withPackages (ps: [
+      ps.docker
+      ps.pytest
+      ps.pytest-cov
+      ps.rich
+      ps.beautifulsoup4
+      ps.chardet
+      ps.ghapi
+      ps.unidiff
+      ps.datasets
+      ps.python-dotenv
+      ps.gitpython
+      ps.pre-commit-hooks
+      ps.requests
+      ps.tenacity
+      ps.tqdm
+      ps.openai
+      ps.pyyaml
+    ]);
+
+    docs = pkgs.runCommand "debugger-doxygen-docs"
+      {
+        nativeBuildInputs = [ pkgs.doxygen pkgs.graphviz ];
+        src = self;
+      }
+      ''
+        cd $src
+        mkdir -p $out
+        ( cat Doxyfile; echo "OUTPUT_DIRECTORY = $out" ) | doxygen -
+      '';
   in
   {
+    packages.${system}.docs = docs;
+
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = [
-        pkgs.python313
-        pkgs.python313Packages.docker
-        pkgs.python313Packages.pytest
-        pkgs.python313Packages.pytest-cov
-        pkgs.python313Packages.rich
-        pkgs.python313Packages.beautifulsoup4
-        pkgs.python313Packages.chardet
-        pkgs.python313Packages.ghapi
-        pkgs.python313Packages.unidiff
-        pkgs.python313Packages.unidiff
-        pkgs.python313Packages.datasets
-        pkgs.python313Packages.python-dotenv
-        pkgs.python313Packages.gitpython
-        pkgs.python313Packages.pre-commit-hooks
-        pkgs.python313Packages.requests
-        pkgs.python313Packages.tenacity
-        pkgs.python313Packages.tqdm
-        pkgs.python313Packages.openai
-        pkgs.python313Packages.pyyaml
+        pythonEnv
 
         pkgs.openssl
         pkgs.vscode
@@ -56,12 +81,13 @@
 
       shellHook = ''
         export PYTHONPATH="$PWD:$PWD/libs:$PYTHONPATH"
+        export SWE_BENCH_PATH=${swebench}
 
         echo "Generating Doxygen documentation..."
         doxygen Doxyfile > /dev/null 2>&1
         echo "Doxygen documentation: output/doxygen/html/index.html"
 
-        echo "NOTE: supply your API keys in the .env file in the project root (e.g. DEEPSEEK_API_KEY, OPENAI_API_KEY, CUSTOM_API_KEY)."
+        echo "NOTE: supply your API keys in the .env file in the project root (copy .env.example and fill in the values)."
       '';
     };
   };
