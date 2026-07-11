@@ -1,18 +1,12 @@
 #!/usr/bin/env python
 """
-Quality-gate a rendered SFT trajectory dataset (Layer-1 replay or Layer-2
-teacher, or a merged file).
-
-Checks per trajectory: no error/unimplemented tool outputs, no empty evidence
-outputs, the final apply_patch carries a patch, and at least one open_file range
-covers every gold-patch hunk in each patched file. Reports aggregate gates plus
-trajectory-shape diversity and per-framework / per-source counts.
+Validate the generated traces against source code
 
 Run from the repository root:
 
-    python research/swebench/sft/validate_sft_dataset.py \
-        --run-dir output/benchmark-runs/<run_id> \
-        --dataset output/sft/<file>.jsonl
+python research/swebench/sft/validate_sft_dataset.py \
+    --run-dir output/benchmark-runs/<run_id> \
+    --dataset output/sft/<file>.jsonl
 """
 
 from __future__ import annotations
@@ -158,20 +152,6 @@ def _parse_args():
 def main() -> None:
     args = _parse_args()
     report = DatasetValidator(args.run_dir).validate(args.dataset)
-    print(f"dataset            : {args.dataset}")
-    print(f"rows               : {report['rows']}")
-    print(f"unique instances   : {report['unique_instances']}")
-    print(f"duplicate variants : {report['duplicate_variants']}")
-    print(f"runtime_grounded   : {report['grounded']}")
-    print(f"by source          : {dict(report['by_source'])}")
-    print(f"by framework       : {dict(report['by_framework'])}")
-    print("--- gates ---")
-    print(f"error outputs      : {report['errors']}")
-    print(f"empty outputs      : {report['empty_outputs']}")
-    print(f"missing patch      : {report['missing_patch']}")
-    print(f"gold coverage full : {report['coverage_full']}/{report['rows']}")
-    print(f"coverage partial   : {report['coverage_partial']}")
-    print(f"distinct shapes    : {len(report['shapes'])}")
     if args.show_failures and report["failures"]:
         print(f"--- failures (first {args.show_failures}) ---")
         for item in report["failures"][: args.show_failures]:

@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 """
-Layer-1 deterministic replay exporter for runtime-tool SFT.
+Deterministic replay exporter for runtime-tool SFT.
 
-Reconstructs idealized, tool-calls-only agentic trajectories for every resolved
-`with_runtime` instance in a benchmark run. Runtime tool outputs are produced by
-the real libs.llm.tooling catalog over the populated baseline trace, and the
-final apply_patch carries the gold reference patch. Emits canonical OpenAI-style
-messages as JSONL for downstream SFT.
+This script takes the benchmark output and extract tool calls and final apply_patch with a
+reference patch. Then, it populates each tool call result with the actualy result based on the
+repo source code checkout. This is later fed to the model to teach it to read the output of tool calls.
 
-Run from the repository root:
+How to run:
 
-    python research/swebench/sft/build_replay_sft_dataset.py \
-        --run-dir output/benchmark-runs/<run_id> \
-        --out output/sft/<run_id>_replay.jsonl
+python research/swebench/sft/build_replay_sft_dataset.py --run-dir output/benchmark-runs/<run_id> --out output/sft/<run_id>_replay.jsonl
 """
 
 from __future__ import annotations
@@ -24,7 +20,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
-import libs.harness  # noqa: F401  (import first to break libs.llm <-> libs.harness cycle)
 from libs.frames import (
     Frame,
     default_exec_path_pipeline,
@@ -480,9 +475,7 @@ def _parse_args() -> ReplayConfig:
 def main() -> None:
     config = _parse_args()
     stats = ReplayDatasetExporter(config).run()
-    print(f"resolved instances : {stats.resolved}")
-    print(f"exported trajectories: {stats.exported}")
-    print(f"output             : {config.out_path}")
+
     if stats.skipped:
         print("skipped:")
         for reason, count in sorted(stats.skipped.items()):

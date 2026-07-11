@@ -1,6 +1,6 @@
 # Fine-tuning pipeline (SFT of Qwen2.5-Coder-7B-Instruct)
 
-Scripts in this folder implement the fine-tuning setup.
+The set of scripts in this folder was used to implement the fine-tuning setup.
 The resulting model is published at [tymofii256/qwen2.5-coder-7b-ft-runtime](https://huggingface.co/tymofii256/qwen2.5-coder-7b-ft-runtime).
 
 #### Pipeline

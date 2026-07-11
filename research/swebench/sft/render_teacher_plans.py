@@ -1,26 +1,16 @@
 #!/usr/bin/env python
 """
-Render teacher-authored tool-use plans into faithful SFT trajectories.
+Renders tool-use plans.
 
-Reads plan files (one JSON per instance: an ordered list of evidence tool calls)
-and renders each into a tool-calls-only trajectory whose tool observations come
-from the real libs.llm.tooling catalog and whose final apply_patch carries the
-gold reference patch. Tool steps that error or return nothing are dropped so
-teacher mistakes never poison the data. Output schema matches the Layer-1
-replay dataset.
+Reads plan files and renders each into a trajectory whose tool observations come.
 
-Plan file format (per instance):
-    {"instance_id": "django__django-11099",
-     "plan": [{"tool": "get_execution_trace", "args": {}},
-              {"tool": "open_file",
-               "args": {"path": "/testbed/django/...", "start_line": 1, "end_line": 40}}]}
 
 Run from the repository root:
 
-    python research/swebench/sft/render_teacher_plans.py \
-        --run-dir output/benchmark-runs/<run_id> \
-        --plans-dir output/sft/<run_id>_plans \
-        --out output/sft/<run_id>_teacher.jsonl
+python research/swebench/sft/render_teacher_plans.py \
+    --run-dir output/benchmark-runs/<run_id> \
+    --plans-dir output/sft/<run_id>_plans \
+    --out output/sft/<run_id>_teacher.jsonl
 """
 
 from __future__ import annotations
@@ -157,11 +147,6 @@ def _parse_args() -> tuple[ReplayConfig, Path]:
 def main() -> None:
     config, plans_dir = _parse_args()
     stats = TeacherPlanRenderer(config, plans_dir).run()
-    print(f"plans found    : {stats['plans']}")
-    print(f"rendered       : {stats['rendered']}")
-    print(f"skipped        : {stats['skipped']}")
-    print(f"dropped steps  : {stats['dropped_steps']}")
-    print(f"output         : {config.out_path}")
 
 
 if __name__ == "__main__":

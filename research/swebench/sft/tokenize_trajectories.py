@@ -2,23 +2,21 @@
 """
 Tokenize SFT trajectories into Qwen2.5-Coder ChatML with assistant-only loss.
 
-Reads a JSONL of OpenAI-style message trajectories (system / user / assistant
-with tool_calls / tool), renders them with the model's chat template plus the
+Read a JSONL of trajectories, renders them with the model's chat template plus the
 runtime tool schema, and computes per-token labels that supervise ONLY the
 assistant tool-call tokens (role headers, prompts, and tool observations are
 masked with -100). Splits by instance_id to avoid variant leakage and saves a
 HuggingFace dataset to disk.
 
-Depends only on `transformers` and `datasets` (no repo imports), so it runs
-standalone on a training box. Provide the tool schema produced by
-`json.dump(create_with_runtime_catalog().openai_tools(), ...)`.
 
-    python tokenize_trajectories.py \
-        --dataset output/sft/train.jsonl \
-        --tools output/sft/tools_schema.json \
-        --model Qwen/Qwen2.5-Coder-7B-Instruct \
-        --out output/sft/tokenized \
-        --max-len 10240 --val-instances 16
+Run using:
+
+python tokenize_trajectories.py \
+    --dataset output/sft/train.jsonl \
+    --tools output/sft/tools_schema.json \
+    --model Qwen/Qwen2.5-Coder-7B-Instruct \
+    --out output/sft/tokenized \
+    --max-len 10240 --val-instances 16
 """
 
 from __future__ import annotations

@@ -1,19 +1,14 @@
 #!/usr/bin/env python
 """
-Dump per-instance teacher packets for Layer-2 trajectory authoring.
+Intermediate script
 
-For every eligible instance (populated baseline trace + reference patch +
-project checkout) writes a compact JSON packet containing the runtime evidence a
-teacher needs to author a realistic tool-use plan: the prompt, the rendered
-no-arg evidence-tool outputs, the granular functions available, the gold patch,
-and the on-disk project root. Plans authored against these packets are rendered
-into faithful trajectories by render_teacher_plans.py.
+For every instance writes a JSON packet containing the runtime information for
+teacher to create a realistic tool-use plan.
+Plans generated this way are then rendered in render_teacher_plans.py.
 
-Run from the repository root:
+How to run:
 
-    python research/swebench/sft/dump_teacher_packets.py \
-        --run-dir output/benchmark-runs/<run_id> \
-        --out-dir output/sft/<run_id>_packets
+python research/swebench/sft/dump_teacher_packets.py --run-dir output/benchmark-runs/<run_id> --out-dir output/sft/<run_id>_packets
 """
 
 from __future__ import annotations

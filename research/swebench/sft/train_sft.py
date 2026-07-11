@@ -1,17 +1,12 @@
 #!/usr/bin/env python
 """
-LoRA SFT of Qwen2.5-Coder on tokenized runtime-tool trajectories.
+Main SFT script. The default hyperparams are defined in the thesis.
 
-Loads the tokenized DatasetDict produced by tokenize_trajectories.py and fine
--tunes the base model with LoRA (bf16, gradient checkpointing) on a single
-80GB GPU. Loss is already restricted to assistant tool-call tokens via the
-precomputed -100 labels, so a plain language-modeling collator is used.
-
-    python train_sft.py \
-        --data output/sft/tokenized \
-        --model Qwen/Qwen2.5-Coder-7B-Instruct \
-        --out output/sft/qwen7b-runtime-lora \
-        --epochs 3 --lr 1e-4
+python train_sft.py \
+    --data output/sft/tokenized \
+    --model Qwen/Qwen2.5-Coder-7B-Instruct \
+    --out output/sft/qwen7b-runtime-lora \
+    --epochs 3 --lr 1e-4
 """
 
 from __future__ import annotations
