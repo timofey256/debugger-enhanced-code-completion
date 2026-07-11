@@ -21,6 +21,7 @@ from libs.harness import (
     Variant,
 )
 from libs.llm.connector import LLMConnector
+from libs.llm.tooling import RUNTIME_TOOL_NAMES, RuntimeToolset
 from libs.log import create_logger
 
 from research.swebench.harness.benchmark_index import (
@@ -55,6 +56,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run_id", type=str, default=None)
     parser.add_argument("--provider", type=str, default="deepseek")
     parser.add_argument("--model", type=str, default="deepseek-chat")
+    parser.add_argument(
+        "--runtime_tools",
+        nargs="+",
+        type=str,
+        default=["all"],
+        help=(
+            "Runtime tools available to the with_runtime variant (ablation subset). "
+            f"Choose from {list(RUNTIME_TOOL_NAMES)}, or 'all' / 'none'."
+        ),
+    )
     parser.add_argument("--max_tokens", type=int, default=2500)
     parser.add_argument("--context_lines", type=int, default=8)
     parser.add_argument("--test_context_lines", type=int, default=25)
@@ -138,6 +149,7 @@ def build_config(args: argparse.Namespace) -> ComparisonConfig:
         timeout=args.timeout,
         force_rebuild=args.force_rebuild,
         nocache=args.nocache,
+        runtime_toolset=RuntimeToolset.from_names(args.runtime_tools),
     )
 
 

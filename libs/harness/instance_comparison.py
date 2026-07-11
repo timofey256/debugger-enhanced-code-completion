@@ -13,9 +13,7 @@ from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tup
 import docker
 
 from libs.frames import (
-    ExecutionPathSerializer,
     Frame,
-    FrameSerializer,
     select_most_informative_trace,
 )
 from libs.harness.framework_detector import FrameworkDetector
@@ -29,10 +27,9 @@ from libs.llm.tooling import (
     ProjectPathResolver,
     ProjectToolContext,
     RuntimeToolContext,
+    RuntimeToolset,
     ToolCatalog,
     ToolSessionContext,
-    create_with_runtime_catalog,
-    create_without_runtime_catalog,
 )
 
 from libs.prompts import PromptBuilder, load_prompt
@@ -151,8 +148,9 @@ class ComparisonConfig:
     force_rebuild: bool = False
     nocache: bool = False
     enable_tools: bool = True
-    max_tool_turns: int = 50
+    max_tool_turns: int = 35
     max_tool_output_chars: int = 20000
+    runtime_toolset: RuntimeToolset = field(default_factory=RuntimeToolset.all)
 
 
 @dataclass
@@ -679,11 +677,8 @@ class InstanceComparison:
         context = self._build_tool_session_context(
             baseline, include_runtime=include_runtime, project_root=project_root
         )
-        catalog: ToolCatalog = (
-            create_with_runtime_catalog()
-            if include_runtime
-            else create_without_runtime_catalog()
-        )
+        toolset = self._config.runtime_toolset if include_runtime else RuntimeToolset.none()
+        catalog: ToolCatalog = toolset.catalog()
         return self._llm.complete_with_tools(
             prompt,
             catalog=catalog,
@@ -793,18 +788,9 @@ class InstanceComparison:
         exception_type = str(trace.get("exc_type", "TestFailure"))
         exception_msg = str(trace.get("message", "See failure summary"))
 
-        frames = _trace_frames(trace)
-        exec_path_frames = _trace_exec_path(trace)
-
         if include_runtime:
-            execution_path = ExecutionPathSerializer().to_string(exec_path_frames)
-            runtime_frames = FrameSerializer(
-                source_map, self._config.context_lines
-            ).to_string_many(frames)
-            runtime_specific = load_prompt("debugger/runtime_specific.txt").rstrip("\n")
+            runtime_specific = self._config.runtime_toolset.prompt_section()
         else:
-            execution_path = "intentionally omitted"
-            runtime_frames = "intentionally omitted"
             runtime_specific = "intentionally omitted"
 
         return (
@@ -816,7 +802,6 @@ class InstanceComparison:
             .add_section("testcase_source", testcase_source)
             .add_section("exception_type", exception_type)
             .add_section("exception_body", exception_msg)
-            .add_section("execution_path", execution_path)
             .build()
         )
 

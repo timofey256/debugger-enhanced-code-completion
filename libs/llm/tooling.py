@@ -5,7 +5,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Callable, Iterable, Mapping, Optional, Sequence
 
 from libs.frames import ExecutionPathSerializer, Frame, FrameSerializer
 from libs.harness.io_utils import render_numbered_range
@@ -497,6 +497,98 @@ class ToolCatalog:
             return tool.execute(context, invocation)
         except Exception as exc:
             return ToolResult(invocation.name, "error", str(exc))
+
+
+_PROJECT_TOOL_FACTORIES: tuple[Callable[[], BaseTool], ...] = (
+    PrintProjectTreeTool,
+    OpenFileTool,
+    SearchSymbolTool,
+)
+
+_CONTROL_TOOL_FACTORIES: tuple[Callable[[], BaseTool], ...] = (ApplyPatchTool,)
+
+
+@dataclass(frozen=True)
+class RuntimeToolDef:
+    name: str
+    factory: Callable[[], BaseTool]
+    prompt_blurb: str
+
+
+RUNTIME_TOOL_DEFS: tuple[RuntimeToolDef, ...] = (
+    RuntimeToolDef(
+        "exec_path",
+        GetExecutionTraceTool,
+        "get_execution_trace — the real sequence of calls that reached the failure; "
+        "use it to identify which function is actually responsible.",
+    ),
+    RuntimeToolDef(
+        "frames",
+        GetFramesTool,
+        "get_frames — the traceback frames at the failure point, WITH the actual "
+        "local variable values there. Inspect these values to see what went wrong.",
+    ),
+    RuntimeToolDef(
+        "step_frames",
+        GetGranularFramesTool,
+        "get_granular_frames(function_name) — line-by-line frames and locals inside "
+        "a specific function, to watch how the bad value arose.",
+    ),
+)
+
+RUNTIME_TOOL_NAMES: tuple[str, ...] = tuple(d.name for d in RUNTIME_TOOL_DEFS)
+
+_RUNTIME_TOOL_BY_NAME: dict[str, RuntimeToolDef] = {d.name: d for d in RUNTIME_TOOL_DEFS}
+
+
+class RuntimeToolset:
+    def __init__(self, selected: Iterable[str] = ()):
+        requested = list(dict.fromkeys(str(name).strip() for name in selected))
+        unknown = [name for name in requested if name not in _RUNTIME_TOOL_BY_NAME]
+        if unknown:
+            raise ValueError(
+                f"Unknown runtime tools: {unknown}. Available: {list(RUNTIME_TOOL_NAMES)}"
+            )
+        self._selected = tuple(name for name in RUNTIME_TOOL_NAMES if name in requested)
+
+    @classmethod
+    def all(cls) -> "RuntimeToolset":
+        return cls(RUNTIME_TOOL_NAMES)
+
+    @classmethod
+    def none(cls) -> "RuntimeToolset":
+        return cls(())
+
+    @classmethod
+    def from_names(cls, names: Iterable[str]) -> "RuntimeToolset":
+        tokens = [str(name).strip() for name in names if str(name).strip()]
+        if not tokens or tokens == ["none"]:
+            return cls.none()
+        if tokens == ["all"]:
+            return cls.all()
+        return cls(tokens)
+
+    @property
+    def selected(self) -> tuple[str, ...]:
+        return self._selected
+
+    def label(self) -> str:
+        return "+".join(self._selected) if self._selected else "no_runtime"
+
+    def catalog(self) -> ToolCatalog:
+        tools = [factory() for factory in _PROJECT_TOOL_FACTORIES]
+        tools += [_RUNTIME_TOOL_BY_NAME[name].factory() for name in self._selected]
+        tools += [factory() for factory in _CONTROL_TOOL_FACTORIES]
+        return ToolCatalog(tools)
+
+    def prompt_section(self) -> str:
+        if not self._selected:
+            return "intentionally omitted"
+        bullets = "\n".join(
+            f"- {_RUNTIME_TOOL_BY_NAME[name].prompt_blurb}" for name in self._selected
+        )
+        template = load_prompt("debugger/runtime_specific.txt").rstrip("\n")
+        return template.replace("{{runtime_tools}}", bullets)
 
 
 def create_with_runtime_catalog() -> ToolCatalog:

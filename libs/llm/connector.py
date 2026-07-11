@@ -194,7 +194,7 @@ class LLMConnector:
         *,
         catalog: ToolCatalog,
         context: ToolSessionContext,
-        max_tool_turns: int = 50,
+        max_tool_turns: int = 35,
         max_tokens: int = 2000,
         max_tool_output_chars: int = 20000,
     ) -> ToolSessionResult:
