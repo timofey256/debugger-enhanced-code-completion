@@ -53,7 +53,25 @@
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs",
-        "openspec": "openspec"
+        "openspec": "openspec",
+        "swebench-src": "swebench-src"
+      }
+    },
+    "swebench-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1767560508,
+        "narHash": "sha256-Z6Z0NV6Hk5WHGx0iU0PKA8I9pv1m5t3g9YbOw924GSc=",
+        "owner": "SWE-bench",
+        "repo": "SWE-bench",
+        "rev": "fa79f3af3e0f212d4d14b1c858c77fcaae5308ce",
+        "type": "github"
+      },
+      "original": {
+        "owner": "SWE-bench",
+        "repo": "SWE-bench",
+        "rev": "fa79f3af3e0f212d4d14b1c858c77fcaae5308ce",
+        "type": "github"
       }
     }
   },
