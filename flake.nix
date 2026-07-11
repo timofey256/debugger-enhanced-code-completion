@@ -83,10 +83,6 @@
         export PYTHONPATH="$PWD:$PWD/libs:$PYTHONPATH"
         export SWE_BENCH_PATH=${swebench}
 
-        echo "Generating Doxygen documentation..."
-        doxygen Doxyfile > /dev/null 2>&1
-        echo "Doxygen documentation: output/doxygen/html/index.html"
-
         echo "NOTE: supply your API keys in the .env file in the project root (copy .env.example and fill in the values)."
       '';
     };
