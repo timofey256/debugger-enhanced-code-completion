@@ -449,7 +449,7 @@ class GetGranularFramesTool(BaseTool):
 
 class ApplyPatchTool(BaseTool):
     def __init__(self):
-        patch_requirements = load_prompt("swebench/strict_patch_requirements.txt").strip()
+        patch_requirements = load_prompt("strict_patch_requirements.txt").strip()
         super().__init__(
             ToolSpec(
                 name="apply_patch",
@@ -587,7 +587,7 @@ class RuntimeToolset:
         bullets = "\n".join(
             f"- {_RUNTIME_TOOL_BY_NAME[name].prompt_blurb}" for name in self._selected
         )
-        template = load_prompt("debugger/runtime_specific.txt").rstrip("\n")
+        template = load_prompt("runtime_specific.txt").rstrip("\n")
         return template.replace("{{runtime_tools}}", bullets)
 
 

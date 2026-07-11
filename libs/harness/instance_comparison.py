@@ -795,8 +795,8 @@ class InstanceComparison:
 
         return (
             PromptBuilder()
-            .add_section("intro", load_prompt("debugger/intro.txt").rstrip("\n"))
-            .add_section("instructions", load_prompt("debugger/instructions.txt").rstrip("\n"))
+            .add_section("intro", load_prompt("intro.txt").rstrip("\n"))
+            .add_section("instructions", load_prompt("instructions.txt").rstrip("\n"))
             .add_section("runtime_specific", runtime_specific)
             .add_section("failure_summary", failure_summary)
             .add_section("testcase_source", testcase_source)

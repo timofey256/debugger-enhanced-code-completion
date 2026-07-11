@@ -12,8 +12,8 @@ HuggingFace dataset to disk.
 Run using:
 
 python tokenize_trajectories.py \
-    --dataset output/sft/train.jsonl \
-    --tools output/sft/tools_schema.json \
+    --dataset data/datasets/train.jsonl \
+    --tools data/datasets/tools_schema.json \
     --model Qwen/Qwen2.5-Coder-7B-Instruct \
     --out output/sft/tokenized \
     --max-len 10240 --val-instances 16

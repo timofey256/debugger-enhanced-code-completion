@@ -248,7 +248,7 @@ class _ToolSessionRunner:
         for turn in range(self._max_tool_turns):
             is_last_turn = turn == self._max_tool_turns - 1
             if is_last_turn:
-                patch_requirements = load_prompt("swebench/strict_patch_requirements.txt").strip()
+                patch_requirements = load_prompt("strict_patch_requirements.txt").strip()
                 messages.append({
                     "role": "user",
                     "content": (
@@ -368,7 +368,7 @@ class _ToolSessionRunner:
         return ToolSessionResult(patch="", transcript=messages, input_tokens=_input_tokens, output_tokens=_output_tokens, tool_call_counts=_tool_call_counts)
 
     def _request_final_patch(self, messages: list[dict[str, Any]]) -> tuple[str, int, int]:
-        patch_requirements = load_prompt("swebench/strict_patch_requirements.txt").strip()
+        patch_requirements = load_prompt("strict_patch_requirements.txt").strip()
         investigation = self._render_investigation(messages)
         clean_messages = [
             {
