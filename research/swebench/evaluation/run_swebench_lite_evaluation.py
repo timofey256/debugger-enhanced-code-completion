@@ -24,7 +24,7 @@ from libs.llm.connector import LLMConnector
 from libs.llm.tooling import RUNTIME_TOOL_NAMES, RuntimeToolset
 from libs.log import create_logger
 
-from research.swebench.harness.benchmark_index import (
+from research.swebench.harness.helpers import (
     append_record,
     build_instance_index_record,
     finalize_run_index,
