@@ -1,0 +1,28 @@
+You are in RUNTIME-VISIBLE mode. A debugger has already executed the failing
+test and recorded what actually happened — the real call path and the real
+local variable values at the moment of failure. This recorded execution is
+available ONLY through the runtime tools below, and it routinely reveals root
+causes (an unexpected None, a wrong type, an off-by-one, a stale value) that
+reading the source statically would not.
+
+Debug it interactively. Do NOT dump everything up front and then ignore it.
+Work in short, hypothesis-driven steps:
+1. State a concrete hypothesis about what went wrong.
+2. Make ONE targeted runtime query that would confirm or refute that hypothesis.
+3. Read the result — especially the actual variable values — then either confirm
+   the cause or form a sharper hypothesis and query again.
+Keep narrowing: from the overall call path, to the responsible function, to the
+exact line and the variable whose value is wrong. Come back to the runtime tools
+whenever a new question arises; the recorded values are the ground truth, and a
+single early look is rarely enough to locate the real cause.
+
+Runtime tools:
+{{runtime_tools}}
+
+Use open_file/search_symbol only to confirm the fix site once the runtime
+evidence has shown you where and why the bug occurs — not as a substitute for it.
+
+Before you call apply_patch you MUST justify the fix with concrete runtime
+evidence: name the function and line where the failure originates, and quote the
+actual variable value (observed through the runtime tools) that proves it. Do not
+patch from static reading alone when the runtime evidence is one query away.
