@@ -44,6 +44,30 @@
       ps.pyyaml
     ]);
 
+    benchmark = pkgs.writeShellApplication {
+      name = "run-benchmark";
+      runtimeInputs = [ pythonEnv ];
+      text = ''
+        if [ -f .env ]; then
+          set -a
+          # shellcheck disable=SC1091
+          . ./.env
+          set +a
+        fi
+        export SWE_BENCH_PATH=${swebench}
+        export PYTHONPATH="${self}:''${PYTHONPATH:-}"
+        exec python -m research.swebench.evaluation.run_swebench_lite_evaluation \
+          --dataset princeton-nlp/SWE-bench_Lite \
+          --provider deepseek \
+          --model deepseek-chat \
+          --verbose \
+          --context_lines 30 \
+          --run_id example__deepseek_turns-35 \
+          --max_workers 6 \
+          "$@"
+      '';
+    };
+
     docs = pkgs.runCommand "debugger-doxygen-docs"
       {
         nativeBuildInputs = [ pkgs.doxygen pkgs.graphviz ];
@@ -56,7 +80,15 @@
       '';
   in
   {
-    packages.${system}.docs = docs;
+    packages.${system} = {
+      docs = docs;
+      benchmark = benchmark;
+    };
+
+    apps.${system}.benchmark = {
+      type = "app";
+      program = "${benchmark}/bin/run-benchmark";
+    };
 
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = [
