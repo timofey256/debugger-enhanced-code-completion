@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+"""Main benchmark statistics over comparison_report.json files of a run.
+
+Takes a benchmark run directory (containing artifacts/) and prints per-variant
+counts: resolved instances, applied patches, localization hits and token usage.
+Useful to re-grade any finished run without re-running it.
+
+How to run:
+
+python scripts/research/report_metrics.py output/benchmark-runs/<run_id>
+"""
+
 from __future__ import annotations
 
 import argparse

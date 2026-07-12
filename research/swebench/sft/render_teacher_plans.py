@@ -40,6 +40,8 @@ ALLOWED_TOOLS = {
 
 
 class TeacherPlanRenderer:
+    """Renders teacher plan JSONs into trajectories by executing each planned call; drops bad steps and appends the gold `apply_patch`."""
+
     def __init__(self, config: ReplayConfig, plans_dir: Path):
         self._config = config
         self._plans_dir = plans_dir

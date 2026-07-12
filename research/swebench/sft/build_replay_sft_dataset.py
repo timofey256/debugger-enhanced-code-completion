@@ -43,6 +43,8 @@ DEFSCAN_RE = re.compile(r"\b(?:def|class)\s+([A-Za-z_]\w*)")
 
 @dataclass(frozen=True)
 class ReplayConfig:
+    """Knobs of the replay export: run directory, output path, context sizes and limits."""
+
     run_dir: Path
     out_path: Path
     context_lines: int = 5
@@ -54,6 +56,8 @@ class ReplayConfig:
 
 @dataclass(frozen=True)
 class HunkTarget:
+    """One gold-patch hunk: target file, old-side line range and the enclosing function from the hunk header."""
+
     path: str
     old_start: int
     old_len: int
@@ -62,6 +66,8 @@ class HunkTarget:
 
 @dataclass(frozen=True)
 class PatchTargets:
+    """All hunks of the gold patch; tells the planner which files and functions to inspect."""
+
     hunks: Sequence[HunkTarget]
 
     def files(self) -> list[str]:
@@ -80,6 +86,8 @@ class PatchTargets:
 
 
 class PatchParser:
+    """Parses a unified diff into `PatchTargets` (files, old-side ranges, hunk-header functions)."""
+
     def parse(self, patch_text: str) -> PatchTargets:
         hunks: list[HunkTarget] = []
         current: Optional[str] = None
@@ -109,6 +117,8 @@ class PatchParser:
 
 
 class TraceBundle:
+    """One baseline trace run through the default filtering pipelines, with helper queries over its frames."""
+
     def __init__(self, trace: Mapping[str, Any]):
         self._trace = trace
         self._frames = self._pipe(default_traceback_pipeline(), trace.get("frames", []))
@@ -160,6 +170,8 @@ class TraceBundle:
 
 
 class SourceMapBuilder:
+    """Reads referenced container files from the local project checkout into a path -> content map."""
+
     def __init__(self, project_root: Path):
         self._project_root = project_root
 
@@ -181,6 +193,8 @@ class SourceMapBuilder:
 
 
 class TrajectoryBuilder:
+    """Builds one trajectory: plans tool calls from the gold patch, executes them via the real catalog and assembles the messages."""
+
     def __init__(self, config: ReplayConfig):
         self._config = config
         self._catalog = create_with_runtime_catalog()
@@ -385,6 +399,8 @@ class _IdCounter:
 
 @dataclass
 class ExportStats:
+    """Counters of the export run: resolved, exported and per-reason skips."""
+
     resolved: int = 0
     exported: int = 0
     skipped: dict[str, int] = field(default_factory=dict)
@@ -394,6 +410,8 @@ class ExportStats:
 
 
 class ReplayDatasetExporter:
+    """Walks the run index, builds a trajectory for every resolved instance and writes the JSONL dataset."""
+
     def __init__(self, config: ReplayConfig):
         self._config = config
         self._builder = TrajectoryBuilder(config)

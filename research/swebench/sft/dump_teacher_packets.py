@@ -30,6 +30,8 @@ from libs.llm.tooling import ToolInvocation, create_with_runtime_catalog
 
 
 class PacketDumper:
+    """Writes per-instance evidence packets (prompt, evidence-tool outputs, granular functions, gold patch) for teacher plan authoring."""
+
     def __init__(self, run_dir: Path, out_dir: Path, evidence_chars: int = 6000):
         self._run_dir = run_dir
         self._out_dir = out_dir
