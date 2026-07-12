@@ -34,6 +34,8 @@ from transformers import AutoTokenizer
 
 @dataclass(frozen=True)
 class TokenizeConfig:
+    """Knobs of the tokenization: dataset and tool schema paths, model, max length and split sizes."""
+
     dataset_path: Path
     tools_path: Optional[Path]
     model_name: str
@@ -45,6 +47,8 @@ class TokenizeConfig:
 
 
 class TrajectoryTokenizer:
+    """Encodes one trajectory with the chat template and labels only assistant tokens via prefix diffs; returns None when masking cannot be aligned or the sequence is too long."""
+
     def __init__(self, config: TokenizeConfig):
         self._config = config
         self._tokenizer = AutoTokenizer.from_pretrained(config.model_name, trust_remote_code=True)
@@ -129,6 +133,8 @@ class TrajectoryTokenizer:
 
 
 class TokenizedDatasetBuilder:
+    """Tokenizes the whole JSONL, splits train/validation by instance id and saves the HF dataset to disk."""
+
     def __init__(self, config: TokenizeConfig):
         self._config = config
         self._encoder = TrajectoryTokenizer(config)

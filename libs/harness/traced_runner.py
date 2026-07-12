@@ -47,6 +47,8 @@ class TraceCollectionError(Exception):
 
 @dataclass
 class RunResult:
+    """Result of one traced container run: success flag, collected traces and output paths."""
+
     success: bool
     instance_id: str
     framework: str
@@ -67,6 +69,8 @@ class RunResult:
 
 
 class TracedInstanceRunner:
+    """Manages one instance container: builds the image, mounts the tracers, optionally applies a patch, runs tests and collects the trace."""
+
     def __init__(
         self,
         *,
@@ -103,6 +107,8 @@ class TracedInstanceRunner:
         return self._framework  # type: ignore[return-value]
 
     def run(self, pred: Dict[str, Any], *, skip_patch: bool = False) -> RunResult:
+        """Full lifecycle of one traced run: image, container, optional patch, eval script, trace collection; never raises."""
+
         instance_id = self._test_spec.instance_id
         self._logger.info("=" * 60)
         self._logger.info("Processing: %s", instance_id)

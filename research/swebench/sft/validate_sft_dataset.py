@@ -22,6 +22,8 @@ HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@")
 
 
 class DatasetValidator:
+    """Checks the quality gates of a rendered dataset: clean tool outputs, final patch present, gold-hunk coverage by `open_file` ranges."""
+
     def __init__(self, run_dir: Path):
         self._run_dir = run_dir
         self._gold_cache: dict[str, dict[str, list[tuple[int, int]]]] = {}

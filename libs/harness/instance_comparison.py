@@ -51,12 +51,16 @@ from swebench.harness.grading import (
 
 
 class Variant(str, Enum):
+    """Evaluation mode of one run: pre-fix baseline, static-only tools, or full runtime tools."""
+
     BASELINE = "baseline"
     WITHOUT_RUNTIME = "without_runtime"
     WITH_RUNTIME = "with_runtime"
 
 
 class Status(str, Enum):
+    """Test-run status of a variant, including `apply_failed` when the patch did not apply."""
+
     PASSED = "passed"
     FAILED = "failed"
     UNKNOWN = "unknown"
@@ -65,6 +69,8 @@ class Status(str, Enum):
 
 
 class Verdict(str, Enum):
+    """Verdict of a variant relative to the baseline failure counts."""
+
     FIXED = "fixed"
     IMPROVED = "improved"
     UNCHANGED = "unchanged"
@@ -78,6 +84,8 @@ T = TypeVar("T")
 
 @dataclass
 class Outcome:
+    """Graded result of one test run: status, failure counts and the resolution flag."""
+
     status: Status = Status.UNKNOWN
     failure_count: Optional[int] = None
     ran_tests: Optional[int] = None
@@ -98,6 +106,8 @@ class Outcome:
 
 @dataclass
 class VariantResult:
+    """Everything produced by one variant: patch, outcome, artifact paths, tokens and localization metrics."""
+
     variant: Variant
     prompt_path: Path
     response_path: Path
@@ -139,6 +149,8 @@ class VariantResult:
 
 @dataclass
 class ComparisonConfig:
+    """Knobs of the evaluation: model, context sizes, tool turn limits and the runtime toolset."""
+
     model_name: str
     max_tokens: int = 2500
     context_lines: int = 8
@@ -155,6 +167,8 @@ class ComparisonConfig:
 
 @dataclass
 class ComparisonReport:
+    """Final report of one instance: baseline data plus both variant results, written as `comparison_report.json`."""
+
     instance_id: str
     framework: Optional[str]
     created_at: str
@@ -214,6 +228,8 @@ class _Prompts(NamedTuple):
 
 
 class InstanceComparison:
+    """Drives the full evaluation of one instance: baseline collection, tool sessions per variant and grading."""
+
     def __init__(
         self,
         *,
@@ -299,6 +315,8 @@ class InstanceComparison:
             return None
 
     def _run_unsafe(self) -> ComparisonReport:
+        """Orchestrates the whole instance: baseline collection, prompt building, both variants, final report."""
+
         instance_id = self._test_spec.instance_id
         reference_patch = str(self._reference_pred.get(KEY_PREDICTION, ""))
         write_text(self._artifacts_dir / "reference_patch.diff", reference_patch)
@@ -334,6 +352,8 @@ class InstanceComparison:
         return report
 
     def _collect_baseline(self) -> _Baseline:
+        """Runs the failing tests without a fix and gathers all evidence: trace, test output, touched files and their sources from the image."""
+
         instance_id = self._test_spec.instance_id
         run_result = self._baseline_runner.run(self._reference_pred, skip_patch=True)
 
@@ -411,6 +431,8 @@ class InstanceComparison:
         baseline: Optional[_Baseline] = None,
         project_root: Optional[Path] = None,
     ) -> VariantResult:
+        """One variant end to end: LLM session, patch reconstruction, patched test run in Docker and grading; degrades to a NOT_RUN/APPLY_FAILED result instead of raising."""
+
         variant_name = variant.value
         prompt_path = self._artifacts_dir / f"prompt_{variant_name}.txt"
         response_path = self._artifacts_dir / f"response_{variant_name}.txt"
@@ -590,6 +612,8 @@ class InstanceComparison:
     def _read_files_from_image(
         self, image_name: str, file_paths: List[str]
     ) -> Dict[str, str]:
+        """Builds the source map by starting a throwaway container of the instance image and reading the files from it."""
+
         source_map: Dict[str, str] = {}
         if not file_paths:
             return source_map
@@ -691,6 +715,8 @@ class InstanceComparison:
     def _reconstruct_patch(
         self, patch_text: str, project_root: Optional[Path]
     ) -> str:
+        """Best-effort rebuild of the model patch against the real files; falls back to the raw patch on any failure."""
+
         if not patch_text.strip() or project_root is None:
             return patch_text
         try:
@@ -709,6 +735,8 @@ class InstanceComparison:
         return patch_text
 
     def _grade_resolution(self, outcome: Outcome, test_output_path: Path) -> None:
+        """Official SWE-bench grading: instance is resolved when all FAIL_TO_PASS and PASS_TO_PASS tests pass."""
+
         try:
             status_map, _ = get_logs_eval(self._test_spec, str(test_output_path))
         except Exception as exc:

@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+"""Tool usage statistics over comparison_report.json files of a run.
+
+Same CLI shape as report_metrics.py: takes a benchmark run directory
+(containing artifacts/) and prints per-variant totals and per-instance
+averages for every tool. Optionally dumps the summary as JSON.
+
+How to run:
+
+python scripts/research/report_tool_usage.py output/benchmark-runs/<run_id> [--json OUT.json]
+"""
+
 from __future__ import annotations
 
 import argparse

@@ -24,6 +24,8 @@ def _strip_path(raw: str) -> str:
 
 @dataclass
 class Hunk:
+    """One diff hunk: the old-side start line and the raw body lines."""
+
     old_start: int
     body: List[str] = field(default_factory=list)
 
@@ -48,6 +50,8 @@ class Hunk:
 
 @dataclass
 class FilePatch:
+    """All hunks of one file in a diff, plus new/delete flags."""
+
     path: str
     hunks: List[Hunk] = field(default_factory=list)
     is_new: bool = False
@@ -55,6 +59,8 @@ class FilePatch:
 
 
 class UnifiedDiffParser:
+    """Parses unified diff text into `FilePatch` objects, tolerating minor format defects."""
+
     def parse(self, text: str) -> List[FilePatch]:
         files: List[FilePatch] = []
         current: Optional[FilePatch] = None
@@ -98,6 +104,8 @@ class UnifiedDiffParser:
 
 
 class HunkLocator:
+    """Finds where a hunk's old block sits in the file, with exact then fuzzy matching."""
+
     def __init__(self, fuzz: float = 0.75):
         self._fuzz = fuzz
 
@@ -138,6 +146,8 @@ class HunkLocator:
 
 
 class PatchReconstructor:
+    """Rebuilds a malformed model patch into a clean, appliable diff against the real file contents."""
+
     def __init__(self, project_root: Path, fuzz: float = 0.75):
         self._root = Path(project_root)
         self._locator = HunkLocator(fuzz=fuzz)

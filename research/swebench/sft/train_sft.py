@@ -29,6 +29,8 @@ from transformers import (
 
 @dataclass(frozen=True)
 class TrainConfig:
+    """Training hyperparameters: LoRA settings, learning rate schedule, batch sizes and target modules."""
+
     data_dir: Path
     model_name: str
     out_dir: Path
@@ -57,6 +59,8 @@ class TrainConfig:
 
 
 class SFTTrainerBuilder:
+    """Assembles model, LoRA adapters and HF `Trainer` from the config and runs the fine-tuning."""
+
     def __init__(self, config: TrainConfig):
         self._config = config
 

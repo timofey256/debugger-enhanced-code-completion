@@ -7,6 +7,8 @@ from typing import Dict, List
 
 @dataclass
 class PatchHunk:
+    """One parsed hunk for localization scoring: file, enclosing function and changed lines."""
+
     file: str
     function_name: str
     changed_lines: set

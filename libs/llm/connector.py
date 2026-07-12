@@ -82,6 +82,8 @@ def create_chat_completion(client: OpenAI, **create_kwargs: Any):
 
 @dataclass
 class ToolSessionResult:
+    """Result of one LLM session: the patch, the full transcript, token usage and per-tool call counts."""
+
     patch: str
     transcript: list[dict[str, Any]] = field(default_factory=list)
     input_tokens: int = 0
@@ -120,6 +122,8 @@ def _load_config():
 
 
 class LLMConnector:
+    """Hides the concrete LLM provider behind the OpenAI-compatible API, validated against `llm_providers.yaml`."""
+
     def __init__(self, provider: str, model: str):
         load_dotenv()
         providers = _load_config()
@@ -212,6 +216,8 @@ class LLMConnector:
 
 
 class _ToolSessionRunner:
+    """Runs the interactive tool loop: sends completions, executes tool calls, stops on `apply_patch` or turn limit."""
+
     def __init__(
         self,
         *,
