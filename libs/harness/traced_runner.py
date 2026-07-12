@@ -107,6 +107,8 @@ class TracedInstanceRunner:
         return self._framework  # type: ignore[return-value]
 
     def run(self, pred: Dict[str, Any], *, skip_patch: bool = False) -> RunResult:
+        """Full lifecycle of one traced run: image, container, optional patch, eval script, trace collection; never raises."""
+
         instance_id = self._test_spec.instance_id
         self._logger.info("=" * 60)
         self._logger.info("Processing: %s", instance_id)
