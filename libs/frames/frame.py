@@ -11,6 +11,8 @@ def _freeze_mapping(m: Mapping[str, Any]) -> Mapping[str, Any]:
 
 @dataclass(frozen=True)
 class Frame:
+    """One recorded execution point: file, line, function and a snapshot of local variables."""
+
     file: str
     line: int
     func: str

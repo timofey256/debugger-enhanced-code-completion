@@ -8,6 +8,8 @@ from typing import Dict, List, Optional
 
 
 class Framework(str, Enum):
+    """Testing framework of a benchmark instance; decides which tracer gets injected."""
+
     PYTEST = "pytest"
     UNITTEST = "unittest"
     DJANGO = "django"
@@ -22,6 +24,8 @@ _UNITTEST_INDICATORS = ("python -m unittest", "unittest")
 
 
 class FrameworkDetector:
+    """Detects the testing framework from the eval script and injects the tracer setup into it."""
+
     def __init__(self, *, cache_path: Optional[Path] = None):
         self._cache_path = Path(cache_path) if cache_path is not None else None
         self._cache: Dict[str, str] = self._load_cache()

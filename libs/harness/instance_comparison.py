@@ -51,12 +51,16 @@ from swebench.harness.grading import (
 
 
 class Variant(str, Enum):
+    """Evaluation mode of one run: pre-fix baseline, static-only tools, or full runtime tools."""
+
     BASELINE = "baseline"
     WITHOUT_RUNTIME = "without_runtime"
     WITH_RUNTIME = "with_runtime"
 
 
 class Status(str, Enum):
+    """Test-run status of a variant, including `apply_failed` when the patch did not apply."""
+
     PASSED = "passed"
     FAILED = "failed"
     UNKNOWN = "unknown"
@@ -65,6 +69,8 @@ class Status(str, Enum):
 
 
 class Verdict(str, Enum):
+    """Verdict of a variant relative to the baseline failure counts."""
+
     FIXED = "fixed"
     IMPROVED = "improved"
     UNCHANGED = "unchanged"
@@ -78,6 +84,8 @@ T = TypeVar("T")
 
 @dataclass
 class Outcome:
+    """Graded result of one test run: status, failure counts and the resolution flag."""
+
     status: Status = Status.UNKNOWN
     failure_count: Optional[int] = None
     ran_tests: Optional[int] = None
@@ -98,6 +106,8 @@ class Outcome:
 
 @dataclass
 class VariantResult:
+    """Everything produced by one variant: patch, outcome, artifact paths, tokens and localization metrics."""
+
     variant: Variant
     prompt_path: Path
     response_path: Path
@@ -139,6 +149,8 @@ class VariantResult:
 
 @dataclass
 class ComparisonConfig:
+    """Knobs of the evaluation: model, context sizes, tool turn limits and the runtime toolset."""
+
     model_name: str
     max_tokens: int = 2500
     context_lines: int = 8
@@ -155,6 +167,8 @@ class ComparisonConfig:
 
 @dataclass
 class ComparisonReport:
+    """Final report of one instance: baseline data plus both variant results, written as `comparison_report.json`."""
+
     instance_id: str
     framework: Optional[str]
     created_at: str
@@ -214,6 +228,8 @@ class _Prompts(NamedTuple):
 
 
 class InstanceComparison:
+    """Drives the full evaluation of one instance: baseline collection, tool sessions per variant and grading."""
+
     def __init__(
         self,
         *,

@@ -8,10 +8,14 @@ from libs.frames.frame import Frame
 
 @runtime_checkable
 class FrameFilter(Protocol):
+    """Filter protocol: `keep` decides whether a frame stays in the pipeline."""
+
     def keep(self, frame: Frame) -> bool: ...
 
 
 class FrozenOrSyntheticFrameFilter:
+    """Drops frames from frozen modules and synthetic files like `<string>`."""
+
     SKIP_SUBSTRINGS: Tuple[str, ...] = ("<", "frozen")
 
     def keep(self, frame: Frame) -> bool:
@@ -19,6 +23,8 @@ class FrozenOrSyntheticFrameFilter:
 
 
 class SitePackagesFrameFilter:
+    """Drops frames coming from installed third-party packages."""
+
     MARKER = "site-packages"
 
     def keep(self, frame: Frame) -> bool:
@@ -26,6 +32,8 @@ class SitePackagesFrameFilter:
 
 
 class StdlibFrameFilter:
+    """Drops frames from the Python standard library and non-`.py` files."""
+
     def __init__(self, stdlib_paths: Sequence[str] | None = None):
         if stdlib_paths is None:
             stdlib_paths = self._default_stdlib_paths()
@@ -56,6 +64,8 @@ class StdlibFrameFilter:
 
 
 class TestbedOnlyFrameFilter:
+    """Keeps only frames from the project under test (the `/testbed/` checkout)."""
+
     def __init__(self, marker: str = "/testbed/"):
         self._marker = marker
 
@@ -64,11 +74,15 @@ class TestbedOnlyFrameFilter:
 
 
 class ConftestFrameFilter:
+    """Drops frames from pytest `conftest.py` files."""
+
     def keep(self, frame: Frame) -> bool:
         return not frame.file.endswith("/conftest.py")
 
 
 class DedupFrameFilter:
+    """Keeps only the first frame for each unique combination of the given attributes (stateful)."""
+
     def __init__(self, by: Tuple[str, ...] = ("file", "func")):
         if not by:
             raise ValueError("DedupFrameFilter requires at least one attribute")
@@ -84,6 +98,8 @@ class DedupFrameFilter:
 
 
 class MaxEntriesFrameFilter:
+    """Caps the number of frames passing through to the first `n` (stateful)."""
+
     def __init__(self, n: int):
         if n < 0:
             raise ValueError("n must be >= 0")

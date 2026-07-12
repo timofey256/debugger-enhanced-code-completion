@@ -4,6 +4,8 @@ from typing import List, Tuple
 
 
 class PromptBuilder:
+    """Assembles a prompt from named sections rendered as XML-like `<name>...</name>` blocks."""
+
     def __init__(self) -> None:
         self._sections: List[Tuple[str, str]] = []
 

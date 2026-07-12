@@ -15,6 +15,8 @@ except ImportError:
 
 
 class LocalsSerializer:
+    """Renders local variable values to bounded strings (jsonpickle when available, else repr)."""
+
     DEFAULT_CUTOFF = 1000
     UNSERIALIZABLE = "<unserializable>"
 
@@ -46,6 +48,8 @@ class LocalsSerializer:
 
 
 class FrameSerializer:
+    """Renders a frame as text for the LLM: location, surrounding source lines and locals."""
+
     def __init__(
         self,
         source_map: Mapping[str, str],
@@ -100,6 +104,8 @@ class FrameSerializer:
 
 
 class ExecutionPathSerializer:
+    """Renders the execution path as one `file:line in func()` line per frame."""
+
     HEADER = "## Execution path (functions called during test)"
 
     def to_string(self, frames: Iterable[Frame]) -> str:

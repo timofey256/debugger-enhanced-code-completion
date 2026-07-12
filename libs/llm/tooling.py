@@ -14,6 +14,8 @@ from libs.prompts.resources import load_prompt
 
 @dataclass(frozen=True)
 class ToolSpec:
+    """Declaration of a tool: name, description and JSON schema of its arguments."""
+
     name: str
     description: str
     parameters: Mapping[str, Any]
@@ -31,6 +33,8 @@ class ToolSpec:
 
 @dataclass(frozen=True)
 class ToolInvocation:
+    """One tool call requested by the model: tool name and parsed arguments."""
+
     name: str
     arguments: Mapping[str, Any]
     tool_call_id: Optional[str] = None
@@ -38,6 +42,8 @@ class ToolInvocation:
 
 @dataclass(frozen=True)
 class ToolResult:
+    """Outcome of a tool execution: status (`ok`/`error`/`unimplemented`), output text and optionally a patch."""
+
     name: str
     status: str
     output: str
@@ -58,6 +64,8 @@ class ToolResult:
 
 
 class ProjectPathResolver:
+    """Maps container paths (`/testbed/...`) to the local project checkout and back, rejecting escapes."""
+
     def __init__(self, project_root: Path, container_project_root: str = "/testbed"):
         self._project_root = Path(project_root).resolve()
         self._container_project_root = Path(container_project_root).as_posix()
@@ -105,6 +113,8 @@ class ProjectPathResolver:
 
 @dataclass(frozen=True)
 class ProjectToolContext:
+    """Static side of the session: path resolver, source map and context size for rendering."""
+
     resolver: ProjectPathResolver
     source_map: Mapping[str, str]
     context_size: int
@@ -112,6 +122,8 @@ class ProjectToolContext:
 
 @dataclass(frozen=True)
 class RuntimeToolContext:
+    """Runtime side of the session: prepared frames, execution path, step frames and the raw trace."""
+
     frames: Sequence[Frame]
     execution_path: Sequence[Frame]
     step_frames: Sequence[Frame]
@@ -121,11 +133,15 @@ class RuntimeToolContext:
 
 @dataclass(frozen=True)
 class ToolSessionContext:
+    """Everything tools can see during one session; `runtime` is None in the static variant."""
+
     project: ProjectToolContext
     runtime: Optional[RuntimeToolContext] = None
 
 
 class BaseTool(ABC):
+    """Abstract base of every LLM tool: holds the spec and defines `execute`."""
+
     def __init__(self, spec: ToolSpec):
         self.spec = spec
 
@@ -480,6 +496,8 @@ class ApplyPatchTool(BaseTool):
 
 
 class ToolCatalog:
+    """Set of registered tools: exports their OpenAI schemas and dispatches invocations."""
+
     def __init__(self, tools: Sequence[BaseTool]):
         self._tools = {tool.spec.name: tool for tool in tools}
 
@@ -510,6 +528,8 @@ _CONTROL_TOOL_FACTORIES: tuple[Callable[[], BaseTool], ...] = (ApplyPatchTool,)
 
 @dataclass(frozen=True)
 class RuntimeToolDef:
+    """Registry entry of one runtime tool: ablation name, factory and its prompt blurb."""
+
     name: str
     factory: Callable[[], BaseTool]
     prompt_blurb: str
@@ -542,6 +562,8 @@ _RUNTIME_TOOL_BY_NAME: dict[str, RuntimeToolDef] = {d.name: d for d in RUNTIME_T
 
 
 class RuntimeToolset:
+    """Selection of runtime tools for ablations: builds the matching catalog and prompt section."""
+
     def __init__(self, selected: Iterable[str] = ()):
         requested = list(dict.fromkeys(str(name).strip() for name in selected))
         unknown = [name for name in requested if name not in _RUNTIME_TOOL_BY_NAME]

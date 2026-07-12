@@ -17,6 +17,8 @@ from libs.frames.serializer import LocalsSerializer
 
 
 class FramesFilteringPipeline:
+    """Cleans a frame stream: keeps frames passing all filters and serializes their locals."""
+
     def __init__(
         self,
         filters: Sequence[FrameFilter],

@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class ProjectScope:
+    """Context manager owning a project mirror directory; removes it on close."""
+
     def __init__(self, path: Path):
         self._path = path
         self._closed = False
@@ -41,6 +43,8 @@ class ProjectScope:
 
 
 class TraceOutputManager:
+    """Manages per-instance output directories: trace files, project mirrors and container volume specs."""
+
     def __init__(self, base_dir: Path):
         self._base_dir = Path(base_dir).resolve()
         self._base_dir.mkdir(parents=True, exist_ok=True)
