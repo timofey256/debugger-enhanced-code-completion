@@ -8,7 +8,7 @@ This README is a user documentation on how to use the presented system.
 ## Repository layout
 
 Most folders contain their own `README.md` with the description of their content.
-The detailed explanation of the architecture and the benchmark workflow is in `docs/programmer/README.md`.
+The detailed explanation of the architecture and the benchmark workflow is in [`docs/programmer/README.md`](./docs/programmer/README.md).
 
 ## Building the project
 
